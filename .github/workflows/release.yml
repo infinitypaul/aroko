@@ -1,6 +1,10 @@
-# S23-7O — Tag-triggered release packaging with separately gated npm staging
+# S23-7Q — Tag-triggered release packaging with separately gated npm staging
 # and optional GitHub Release.
 # Pack may run on annotated alpha tags or deliberate workflow_dispatch.
+#
+# actions/checkout@v4 (fetch-depth: 0) can overwrite refs/tags/<name> with the
+# peeled commit after first fetching the annotated tag object. release-pack
+# restores the annotated tag from origin and verifies via refs/tags/<name>.
 # npm staging requires ALL of:
 #   - workflow_dispatch with confirm_publish=true
 #   - GitHub Environment `production-release` (tag policy + wait timer; timer ≠ approval)
@@ -53,54 +57,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          # Explicit tag/branch ref from the event. fetch-depth 0 alone does NOT
+          # guarantee the annotated tag object remains at refs/tags/<name>.
+          ref: ${{ github.ref }}
           fetch-depth: 0
 
       - name: Require infinitypaul/aroko + annotated alpha tag at HEAD
         id: tag
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REPOSITORY_ID: ${{ github.repository_id }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_REF_TYPE: ${{ github.ref_type }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          REPO="${{ github.repository }}"
-          if [ "$REPO" != "infinitypaul/aroko" ]; then
-            echo "FAIL: release workflow must run on infinitypaul/aroko (got $REPO)"
+          # Fail-closed: require tag ref for every pack path (tag push or dispatch).
+          if [ "${{ github.ref_type }}" != "tag" ]; then
+            echo "FAIL: release pack requires workflow run on a tag ref (got ref_type=${{ github.ref_type }} ref=${{ github.ref }})"
             exit 1
           fi
-          if [ "${{ github.repository_id }}" != "1413375921" ]; then
-            echo "FAIL: unexpected repository id ${{ github.repository_id }}"
-            exit 1
-          fi
-          COMMIT=$(git rev-parse HEAD)
-          TAG=$(git describe --exact-match --tags HEAD)
-          echo "tag=$TAG"
-          echo "commit=$COMMIT"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "commit=$COMMIT" >> "$GITHUB_OUTPUT"
-          case "$TAG" in
-            v*-alpha.*) ;;
-            *)
-              echo "Release requires annotated tag matching vX.Y.Z-alpha.N (got $TAG)"
-              exit 1
-              ;;
-          esac
-          OBJECT_TYPE=$(git cat-file -t "$TAG")
-          if [ "$OBJECT_TYPE" != "tag" ]; then
-            echo "Release tag must be annotated (got object type: $OBJECT_TYPE)"
-            exit 1
-          fi
-          if [ -n "$(git status --porcelain)" ]; then
-            echo "Working tree must be clean"
-            exit 1
-          fi
-          # Publish path must be dispatched from a tag ref, not a branch tip that happens to be tagged.
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.confirm_publish }}" = "true" ]; then
-            if [ "${{ github.ref_type }}" != "tag" ]; then
-              echo "FAIL: confirm_publish requires workflow_dispatch on a tag ref (got ref_type=${{ github.ref_type }} ref=${{ github.ref }})"
-              exit 1
-            fi
-            if [ "${{ github.ref_name }}" != "$TAG" ]; then
-              echo "FAIL: dispatch ref_name ${{ github.ref_name }} does not match HEAD tag $TAG"
-              exit 1
-            fi
-          fi
+          node scripts/release/verify-annotated-release-tag.mjs --fetch-annotated-tag true
 
       - name: Setup Node
         uses: actions/setup-node@v4
