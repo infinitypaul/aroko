@@ -6,18 +6,33 @@ repositories or sharing credentials.
 Paul asks Kelvin. Kelvin stays in control of Kelvin’s machine, provider, and
 approvals.
 
+**Status:** public alpha. The npm package `@arokodev/cli` is **not published
+yet**. Install from source for now. The primary executable is `aroko`;
+`pairmesh` is a compatibility alias for the same CLI after packaging.
+
 ## Why Aroko
 
 Developers already use coding agents in their own projects. Collaboration
 usually means sharing a repo, a shell, or broad access. Aroko keeps each
 developer’s environment independent and asks before anything sensitive happens.
 
-## Quick start
+## Quick start (from source)
 
 ```bash
-npm install -g @arokodev/cli
+git clone https://github.com/infinitypaul/aroko.git
+cd aroko
+corepack enable
+corepack prepare pnpm@10.15.1 --activate
+pnpm install --frozen-lockfile
+pnpm build
 
-cd my-project
+# Primary CLI (verified on a clean checkout)
+node apps/cli/dist/index.js --version
+
+# Optional: convenient wrapper while developing from this repo
+alias aroko='node '"$PWD"'/apps/cli/dist/index.js'
+
+cd /path/to/my-project
 aroko init
 aroko cursor setup --write
 aroko connect
@@ -27,8 +42,14 @@ aroko connect
 `--provider claude-code` or `--provider gemini-cli` on init, or see the
 integration guides.
 
-`aroko connect` can start the local runtime for you, then help you start or
-join a collaboration.
+Full install notes: [Installation](docs/installation.md).
+
+## npm install (not available yet)
+
+```bash
+# NOT AVAILABLE YET — @arokodev/cli is not on the npm registry
+# npm install -g @arokodev/cli
+```
 
 ## How collaboration works
 
@@ -54,7 +75,9 @@ join a collaboration.
 - Receiver-controlled permissions and approvals
 - Proposal generation is separate from applying changes
 
-See [Security](docs/concepts/security.md) and [SECURITY.md](SECURITY.md).
+See [Security](docs/concepts/security.md), the
+[public alpha security boundary](docs/security/public-alpha-security-boundary.md),
+and [SECURITY.md](SECURITY.md).
 
 ## Documentation
 

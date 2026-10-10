@@ -4,12 +4,19 @@ Get from install to a live collaboration with a teammate.
 
 ## 1. Install
 
+Aroko is an alpha. `@arokodev/cli` is **not** on the npm registry yet.
+
+Follow the verified source install in [Installation](installation.md), then
+confirm the CLI:
+
 ```bash
-npm install -g @arokodev/cli
-aroko --version
+node /path/to/aroko/apps/cli/dist/index.js --version
+# or, from the Aroko repo: pnpm aroko --version
 ```
 
-Need a tarball or offline install? See [Installation](installation.md).
+The examples below use `aroko` as the primary command name. After packaging,
+`pairmesh` is a compatibility alias for the same CLI. Until then, use the
+`node …/apps/cli/dist/index.js` (or `pnpm aroko`) form from Installation.
 
 ## 2. Initialize your project
 

@@ -17,6 +17,11 @@
 
 Not a remote shell, shared disk, credential proxy, or unsupervised agent swarm.
 
+## Public alpha boundary
+
+See [Public alpha security boundary](../security/public-alpha-security-boundary.md)
+for trust boundaries, approvals, and alpha limitations.
+
 ## Report vulnerabilities
 
 See [SECURITY.md](../../SECURITY.md).

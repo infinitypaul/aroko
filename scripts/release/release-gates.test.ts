@@ -72,6 +72,15 @@ describe("S23-7J release gates", () => {
     expect(releaseWorkflow).toContain("aroko-release-${{ steps.tag.outputs.tag }}");
     expect(releaseWorkflow).toContain("aroko-release-${{ needs.release-pack.outputs.tag }}");
   });
+
+  it("requires Node.js 22+ and npm >= 11.5.1 for trusted publishing", () => {
+    expect(releaseWorkflow).toMatch(/node-version:\s*"22"/);
+    expect(releaseWorkflow).toContain("npm install -g npm@^11.5.1");
+    expect(releaseWorkflow).toContain("trusted publishing requires Node.js >= 22.14");
+    expect(releaseWorkflow).toContain("trusted publishing requires npm >= 11.5.1");
+    // Must not pin the release toolchain to Node 20 anymore.
+    expect(releaseWorkflow).not.toMatch(/node-version:\s*"20"/);
+  });
 });
 
 describe("S23-7J negative gate simulations", () => {
