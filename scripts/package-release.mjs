@@ -117,6 +117,24 @@ function main() {
     "utf8"
   );
 
+  writeFileSync(
+    join(releaseDir, "RELEASE_NOTES.md"),
+    [
+      `# Aroko ${identity.gitTag}`,
+      "",
+      `Release candidate for \`@arokodev/cli@${identity.packageVersion}\`.`,
+      "",
+      `- Commit: \`${identity.gitCommit}\``,
+      `- Release id: \`${identity.releaseId}\``,
+      `- Artifact: \`${tarballName}\``,
+      `- SHA256: \`${artifact.sha256}\``,
+      "",
+      "Primary CLI: `aroko`. Compatibility alias: `pairmesh`.",
+      ""
+    ].join("\n"),
+    "utf8"
+  );
+
   if (sha256File(destTarball) !== artifact.sha256) {
     throw new Error("Checksum verification failed after write.");
   }

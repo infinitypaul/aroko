@@ -1,10 +1,11 @@
 # S23-7J — Tag-triggered release packaging with gated publication.
-# Pack always runs on annotated alpha tags.
-# npm / GitHub Release publication requires:
-#   - workflow_dispatch with confirm_publish=true, OR a future authorized path
-#   - GitHub Environment `production-release` approval
-#   - npm trusted publishing configured for @arokodev/cli on infinitypaul/aroko + this workflow
+# Pack may run on annotated alpha tags or deliberate workflow_dispatch.
+# npm / GitHub Release publication requires ALL of:
+#   - workflow_dispatch with confirm_publish=true
+#   - GitHub Environment `production-release` (tag deployment policy)
+#   - npm trusted publishing for @arokodev/cli on infinitypaul/aroko + this workflow
 # Pushing a tag alone MUST NOT publish.
+# Required reviewers may be BLOCKED_BY_PLAN on private Free — treat as release blocker.
 name: release
 
 on:
@@ -18,14 +19,13 @@ on:
         type: boolean
         default: false
       confirm_publish:
-        description: "Publish @arokodev/cli via npm trusted publishing + GitHub Release (requires production-release approval)"
+        description: "Publish @arokodev/cli via npm trusted publishing + GitHub Release (requires production-release)"
         type: boolean
         default: false
 
+# Least privilege at workflow level; publish job elevates only what it needs.
 permissions:
   contents: read
-  id-token: write
-  attestations: write
 
 concurrency:
   group: release-${{ github.ref }}
@@ -39,19 +39,32 @@ jobs:
     timeout-minutes: 45
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
+      commit: ${{ steps.tag.outputs.commit }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Require annotated alpha tag at HEAD
+      - name: Require infinitypaul/aroko + annotated alpha tag at HEAD
         id: tag
         run: |
           set -euo pipefail
+          REPO="${{ github.repository }}"
+          if [ "$REPO" != "infinitypaul/aroko" ]; then
+            echo "FAIL: release workflow must run on infinitypaul/aroko (got $REPO)"
+            exit 1
+          fi
+          if [ "${{ github.repository_id }}" != "1413375921" ]; then
+            echo "FAIL: unexpected repository id ${{ github.repository_id }}"
+            exit 1
+          fi
+          COMMIT=$(git rev-parse HEAD)
           TAG=$(git describe --exact-match --tags HEAD)
           echo "tag=$TAG"
+          echo "commit=$COMMIT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "commit=$COMMIT" >> "$GITHUB_OUTPUT"
           case "$TAG" in
             v*-alpha.*) ;;
             *)
@@ -67,6 +80,17 @@ jobs:
           if [ -n "$(git status --porcelain)" ]; then
             echo "Working tree must be clean"
             exit 1
+          fi
+          # Publish path must be dispatched from a tag ref, not a branch tip that happens to be tagged.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.confirm_publish }}" = "true" ]; then
+            if [ "${{ github.ref_type }}" != "tag" ]; then
+              echo "FAIL: confirm_publish requires workflow_dispatch on a tag ref (got ref_type=${{ github.ref_type }} ref=${{ github.ref }})"
+              exit 1
+            fi
+            if [ "${{ github.ref_name }}" != "$TAG" ]; then
+              echo "FAIL: dispatch ref_name ${{ github.ref_name }} does not match HEAD tag $TAG"
+              exit 1
+            fi
           fi
 
       - name: Setup Node
@@ -91,6 +115,7 @@ jobs:
           pnpm -r --filter './apps/*' --filter './packages/*' run typecheck
           pnpm test
           pnpm run test:provenance
+          pnpm run test:release-gates
           pnpm audit --prod
 
       - name: Package once (release mode)
@@ -105,7 +130,7 @@ jobs:
       - name: Upload release artifact set
         uses: actions/upload-artifact@v4
         with:
-          name: aroko-release-${{ github.ref_name }}
+          name: aroko-release-${{ steps.tag.outputs.tag }}
           path: dist-packages/releases/
           if-no-files-found: error
 
@@ -113,12 +138,12 @@ jobs:
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.confirm_publish != true }}
         run: |
           echo "Release pack complete. npm publish / GitHub Release not performed."
-          echo "Publication requires workflow_dispatch confirm_publish=true + production-release approval."
+          echo "Publication requires workflow_dispatch confirm_publish=true + production-release + tag ref."
 
   release-publish:
     name: release-publish
     needs: release-pack
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm_publish == true }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm_publish == true && github.ref_type == 'tag' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: production-release
@@ -127,15 +152,16 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - name: Checkout
+      - name: Checkout exact packed commit
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ needs.release-pack.outputs.commit }}
 
       - name: Download packed artifacts
         uses: actions/download-artifact@v4
         with:
-          name: aroko-release-${{ github.ref_name }}
+          name: aroko-release-${{ needs.release-pack.outputs.tag }}
           path: dist-packages/releases/
 
       - name: Setup Node
@@ -147,12 +173,34 @@ jobs:
       - name: Verify @arokodev/cli artifact identity (fail closed)
         run: |
           set -euo pipefail
+          REPO="${{ github.repository }}"
+          if [ "$REPO" != "infinitypaul/aroko" ]; then
+            echo "FAIL: publish must run on infinitypaul/aroko (got $REPO)"
+            exit 1
+          fi
+          if [ "${{ github.repository_id }}" != "1413375921" ]; then
+            echo "FAIL: unexpected repository id ${{ github.repository_id }}"
+            exit 1
+          fi
           TAG=${{ needs.release-pack.outputs.tag }}
+          EXPECTED_COMMIT=${{ needs.release-pack.outputs.commit }}
+          ACTUAL_COMMIT=$(git rev-parse HEAD)
+          if [ "$ACTUAL_COMMIT" != "$EXPECTED_COMMIT" ]; then
+            echo "FAIL: checkout commit $ACTUAL_COMMIT != packed commit $EXPECTED_COMMIT"
+            exit 1
+          fi
+          HEAD_TAG=$(git describe --exact-match --tags HEAD)
+          if [ "$HEAD_TAG" != "$TAG" ]; then
+            echo "FAIL: HEAD tag $HEAD_TAG != packed tag $TAG"
+            exit 1
+          fi
           TGZ=$(ls dist-packages/releases/*/aroko-cli-*.tgz | head -1)
           test -n "$TGZ"
           DIR=$(dirname "$TGZ")
           MANIFEST="$DIR/release-manifest.json"
+          NOTES="$DIR/RELEASE_NOTES.md"
           test -f "$MANIFEST"
+          test -f "$NOTES"
           eval "$(tar -xOf "$TGZ" package/package.json | node -e '
             const fs = require("fs");
             const p = JSON.parse(fs.readFileSync(0, "utf8"));
@@ -168,6 +216,10 @@ jobs:
               console.error("FAIL: packed package must expose aroko bin");
               process.exit(1);
             }
+            if (p.bin?.pairmesh !== "./dist/index.js") {
+              console.error("FAIL: packed package must expose pairmesh bin");
+              process.exit(1);
+            }
             console.log("NAME=" + JSON.stringify(p.name));
             console.log("VERSION=" + JSON.stringify(p.version));
           ')"
@@ -178,19 +230,28 @@ jobs:
             exit 1
           fi
           MANIFEST_TAG=$(node -e 'const fs=require("fs"); const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); process.stdout.write(m.gitTag||"")' "$MANIFEST")
+          MANIFEST_COMMIT=$(node -e 'const fs=require("fs"); const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); process.stdout.write(m.gitCommit||"")' "$MANIFEST")
           if [ "$MANIFEST_TAG" != "$TAG" ]; then
-            echo "FAIL: manifest gitTag ($MANIFEST_TAG) does not match dispatch tag ($TAG)"
+            echo "FAIL: manifest gitTag ($MANIFEST_TAG) does not match packed tag ($TAG)"
             exit 1
           fi
-          echo "Verified ${NAME}@${VERSION} artifact + manifest for $TAG"
+          if [ "$MANIFEST_COMMIT" != "$EXPECTED_COMMIT" ]; then
+            echo "FAIL: manifest gitCommit ($MANIFEST_COMMIT) does not match packed commit ($EXPECTED_COMMIT)"
+            exit 1
+          fi
+          echo "Verified ${NAME}@${VERSION} artifact + manifest for $TAG @ $EXPECTED_COMMIT"
 
       - name: Publish @arokodev/cli (trusted publishing)
         run: |
           set -euo pipefail
           echo "Publication step is intentionally gated."
           echo "Requires: npm trusted publisher for @arokodev/cli on infinitypaul/aroko + this workflow,"
-          echo "environment production-release approval, and confirm_publish=true."
+          echo "environment production-release, confirm_publish=true, and tag ref dispatch."
           echo "Do not use a long-lived NPM_TOKEN when trusted publishing is available."
+          if [ -n "${NODE_AUTH_TOKEN:-}" ] || [ -n "${NPM_TOKEN:-}" ]; then
+            echo "FAIL: long-lived npm token env must not be present for trusted publishing"
+            exit 1
+          fi
           TGZ=$(ls dist-packages/releases/*/aroko-cli-*.tgz | head -1)
           test -n "$TGZ"
           # npm publish uses OIDC trusted publishing (no NPM_TOKEN).
