@@ -86,6 +86,15 @@ async function pathExists(path) {
   }
 }
 
+/** Match product cursorMcpConfigPath (AROKO_/PAIRMESH_CURSOR_CONFIG_DIR overrides). */
+function cursorMcpConfigFile(workspace) {
+  const dirName =
+    process.env.AROKO_CURSOR_CONFIG_DIR?.trim() ||
+    process.env.PAIRMESH_CURSOR_CONFIG_DIR?.trim() ||
+    ".cursor";
+  return join(workspace, dirName, "mcp.json");
+}
+
 async function seedExternalProject(targetDir, fixtureName) {
   const fixtureRoot = join(repoRoot, "fixtures/cross-repo-debug", fixtureName);
   if (await pathExists(join(fixtureRoot, "src"))) {
@@ -251,13 +260,26 @@ async function main() {
       env: baseEnv
     });
     pathEnv = `${prefix}/bin:${node20Bin}:${process.env.PATH ?? ""}`;
+    const aroko = join(prefix, "bin", "aroko");
     pairmesh = join(prefix, "bin", "pairmesh");
 
     console.log("Binary resolution:");
+    console.log(`  which aroko -> ${sh(`which aroko`, { env: { PATH: pathEnv } })}`);
     console.log(`  which pairmesh -> ${sh(`which pairmesh`, { env: { PATH: pathEnv } })}`);
-    console.log(
-      `  pairmesh --version -> ${sh(`${JSON.stringify(pairmesh)} --version`, { env: { PATH: pathEnv } })}`
-    );
+    const arokoVersion = sh(`${JSON.stringify(aroko)} --version`, { env: { PATH: pathEnv } });
+    const pairmeshVersion = sh(`${JSON.stringify(pairmesh)} --version`, {
+      env: { PATH: pathEnv }
+    });
+    console.log(`  aroko --version -> ${arokoVersion}`);
+    console.log(`  pairmesh --version -> ${pairmeshVersion}`);
+    if (arokoVersion !== pairmeshVersion) {
+      throw new Error(
+        `Primary aroko and legacy pairmesh bins must report the same version (got ${arokoVersion} vs ${pairmeshVersion})`
+      );
+    }
+
+    // Prefer canonical binary for the rest of the clean-install matrix.
+    pairmesh = aroko;
 
     testNodeVersionGuard(pairmesh, resolveNode18BinDir());
 
@@ -280,7 +302,7 @@ async function main() {
           env: { PATH: pathEnv },
           cwd: dir
         });
-        mcpRaw = await readFile(join(dir, ".cursor/mcp.json"), "utf8");
+        mcpRaw = await readFile(cursorMcpConfigFile(dir), "utf8");
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         // Some agent/CI sandboxes forbid creating `.cursor/` directories (EPERM).
@@ -292,11 +314,11 @@ async function main() {
           `${label}: cursor setup blocked (${message.split("\n")[0]}); ` +
             "skipping .cursor write; verifying installed-mode MCP via mcp --check"
         );
-        // print-config prefers argv[1] → node entry for GUI hosts; clean-install
-        // proof is command "pairmesh" on PATH (same as cursor setup --write).
+        // Sandbox fallback: mirror canonical installed-mode identity written by
+        // cursor setup --write (mcpServers.aroko → command aroko).
         mcpRaw = JSON.stringify({
           mcpServers: {
-            pairmesh: {
+            aroko: {
               command: "aroko",
               args: ["mcp"]
             }
@@ -305,10 +327,25 @@ async function main() {
       }
       const mcpJson = extractJsonObject(mcpRaw);
       const mcp = JSON.parse(mcpJson);
-      const command = mcp.mcpServers?.pairmesh?.command;
-      if (command !== "pairmesh") {
+      const servers = mcp.mcpServers ?? {};
+      // Canonical public identity: mcpServers.aroko with command "aroko".
+      // Legacy mcpServers.pairmesh may still be readable by the product, but a
+      // fresh cursor setup --write must not leave only the legacy key.
+      const canonical = servers.aroko;
+      if (!canonical) {
         throw new Error(
-          `${label}: expected installed-mode MCP command "pairmesh", got ${JSON.stringify(command)}`
+          `${label}: expected mcpServers.aroko after cursor setup --write, got keys ${JSON.stringify(Object.keys(servers))}`
+        );
+      }
+      if (canonical.command !== "aroko") {
+        throw new Error(
+          `${label}: expected installed-mode MCP command "aroko", got ${JSON.stringify(canonical.command)}`
+        );
+      }
+      const args = canonical.args ?? [];
+      if (!args.includes("mcp")) {
+        throw new Error(
+          `${label}: expected MCP args to include "mcp", got ${JSON.stringify(args)}`
         );
       }
       assertNoMonorepoLeak(mcpRaw, `${label} MCP config`);

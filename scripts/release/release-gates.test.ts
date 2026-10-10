@@ -89,6 +89,23 @@ describe("S23-7J release gates", () => {
     expect(releaseWorkflow).not.toMatch(/npm publish ["']?\$TGZ/);
     expect(releaseWorkflow).not.toMatch(/npm publish .*--tag latest/);
   });
+
+  it("gates GitHub Release separately from npm staging", () => {
+    expect(releaseWorkflow).toContain("confirm_github_release");
+    expect(releaseWorkflow).toMatch(
+      /confirm_publish:[\s\S]*does NOT create a GitHub Release/
+    );
+    expect(releaseWorkflow).toMatch(
+      /Create GitHub Release from same artifacts[\s\S]*if:\s*\$\{\{\s*inputs\.confirm_github_release\s*==\s*true\s*\}\}/
+    );
+    // npm stage step must not be gated behind confirm_github_release
+    const stageIdx = releaseWorkflow.indexOf("npm stage publish");
+    const releaseStepIdx = releaseWorkflow.indexOf("Create GitHub Release from same artifacts");
+    expect(stageIdx).toBeGreaterThan(-1);
+    expect(releaseStepIdx).toBeGreaterThan(stageIdx);
+    const stageBlock = releaseWorkflow.slice(stageIdx - 400, stageIdx);
+    expect(stageBlock).not.toContain("confirm_github_release");
+  });
 });
 
 describe("S23-7J negative gate simulations", () => {
