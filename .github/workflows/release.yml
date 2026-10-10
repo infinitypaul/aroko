@@ -1,13 +1,16 @@
-# S23-7N — Tag-triggered release packaging with gated staged publication.
+# S23-7O — Tag-triggered release packaging with separately gated npm staging
+# and optional GitHub Release.
 # Pack may run on annotated alpha tags or deliberate workflow_dispatch.
-# npm staging / GitHub Release requires ALL of:
+# npm staging requires ALL of:
 #   - workflow_dispatch with confirm_publish=true
 #   - GitHub Environment `production-release` (tag policy + wait timer; timer ≠ approval)
 #   - npm trusted publishing for @arokodev/cli on infinitypaul/aroko + this workflow
-#     with stage-publish allowed and direct publish disallowed
+#     with stage-publish allowed and direct publish disallowed when configured
 #   - `npm stage publish … --tag alpha` (never dist-tag latest for prereleases)
 #   - operator `npm stage approve` with interactive 2FA after staging
-# Pushing a tag alone MUST NOT publish or stage.
+# GitHub Release is a separate gate (confirm_github_release=true) and is NOT
+# implied by confirm_publish / npm staging alone.
+# Pushing a tag alone MUST NOT publish, stage, or create a GitHub Release.
 name: release
 
 on:
@@ -21,7 +24,11 @@ on:
         type: boolean
         default: false
       confirm_publish:
-        description: "Publish @arokodev/cli via npm trusted publishing + GitHub Release (requires production-release)"
+        description: "Stage @arokodev/cli via npm trusted publishing (requires production-release; does NOT create a GitHub Release)"
+        type: boolean
+        default: false
+      confirm_github_release:
+        description: "Create a GitHub Release from packed artifacts (requires confirm_publish=true + production-release)"
         type: boolean
         default: false
 
@@ -165,8 +172,9 @@ jobs:
       - name: Stop before external publish (default)
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.confirm_publish != true }}
         run: |
-          echo "Release pack complete. npm publish / GitHub Release not performed."
-          echo "Publication requires workflow_dispatch confirm_publish=true + production-release + tag ref."
+          echo "Release pack complete. npm stage / GitHub Release not performed."
+          echo "npm staging requires workflow_dispatch confirm_publish=true + production-release + tag ref."
+          echo "GitHub Release additionally requires confirm_github_release=true."
 
   release-publish:
     name: release-publish
@@ -176,6 +184,7 @@ jobs:
     timeout-minutes: 30
     environment: production-release
     permissions:
+      # contents:write is only consumed by the optional GitHub Release step.
       contents: write
       id-token: write
       attestations: write
@@ -317,11 +326,12 @@ jobs:
           npm stage publish "$TGZ" --access public --tag alpha
 
       - name: Create GitHub Release from same artifacts
+        if: ${{ inputs.confirm_github_release == true }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          # Separately authorized; only runs when confirm_publish path is deliberately dispatched.
+          # Separately gated from npm staging — confirm_publish alone must NOT create a Release.
           TAG=${{ needs.release-pack.outputs.tag }}
           DIR=$(dirname "$(ls dist-packages/releases/*/aroko-cli-*.tgz | head -1)")
           gh release create "$TAG" \

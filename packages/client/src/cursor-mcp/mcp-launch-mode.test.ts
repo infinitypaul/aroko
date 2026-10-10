@@ -37,4 +37,10 @@ describe("MCP launch mode", () => {
       env: { AROKO_PROJECT_ROOT: workspace, PAIRMESH_PROJECT_ROOT: workspace }
     });
   });
+
+  it("detects installed execution from @arokodev/cli path", () => {
+    expect(
+      isInstalledPairMeshExecution("/tmp/prefix/lib/node_modules/@arokodev/cli/dist/index.js")
+    ).toBe(true);
+  });
 });
