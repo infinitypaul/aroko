@@ -1,11 +1,13 @@
-# S23-7J — Tag-triggered release packaging with gated publication.
+# S23-7N — Tag-triggered release packaging with gated staged publication.
 # Pack may run on annotated alpha tags or deliberate workflow_dispatch.
-# npm / GitHub Release publication requires ALL of:
+# npm staging / GitHub Release requires ALL of:
 #   - workflow_dispatch with confirm_publish=true
-#   - GitHub Environment `production-release` (tag deployment policy)
+#   - GitHub Environment `production-release` (tag policy + wait timer; timer ≠ approval)
 #   - npm trusted publishing for @arokodev/cli on infinitypaul/aroko + this workflow
-# Pushing a tag alone MUST NOT publish.
-# Required reviewers may be BLOCKED_BY_PLAN on private Free — treat as release blocker.
+#     with stage-publish allowed and direct publish disallowed
+#   - `npm stage publish … --tag alpha` (never dist-tag latest for prereleases)
+#   - operator `npm stage approve` with interactive 2FA after staging
+# Pushing a tag alone MUST NOT publish or stage.
 name: release
 
 on:
@@ -100,10 +102,11 @@ jobs:
           node-version: "22"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Require npm for trusted publishing
+      - name: Require npm for staged trusted publishing
         run: |
           set -euo pipefail
-          npm install -g npm@^11.5.1
+          # npm stage publish requires npm >= 11.15.0; OIDC trusted publishing requires >= 11.5.1
+          npm install -g npm@^11.15.0
           NODE_V=$(node -v | sed 's/^v//')
           NPM_V=$(npm -v)
           echo "node=$NODE_V npm=$NPM_V"
@@ -116,10 +119,10 @@ jobs:
           '
           NPM_V="$NPM_V" node -e '
             const v = process.env.NPM_V;
-            const [maj, min, pat] = v.split(".").map(Number);
-            const ok = maj > 11 || (maj === 11 && (min > 5 || (min === 5 && (pat || 0) >= 1)));
+            const [maj, min] = v.split(".").map(Number);
+            const ok = maj > 11 || (maj === 11 && min >= 15);
             if (!ok) {
-              console.error("FAIL: trusted publishing requires npm >= 11.5.1 (got " + v + ")");
+              console.error("FAIL: staged publishing requires npm >= 11.15.0 (got " + v + ")");
               process.exit(1);
             }
           '
@@ -196,10 +199,11 @@ jobs:
           node-version: "22"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Require npm for trusted publishing
+      - name: Require npm for staged trusted publishing
         run: |
           set -euo pipefail
-          npm install -g npm@^11.5.1
+          # npm stage publish requires npm >= 11.15.0; OIDC trusted publishing requires >= 11.5.1
+          npm install -g npm@^11.15.0
           NODE_V=$(node -v | sed 's/^v//')
           NPM_V=$(npm -v)
           echo "node=$NODE_V npm=$NPM_V"
@@ -212,10 +216,10 @@ jobs:
           '
           NPM_V="$NPM_V" node -e '
             const v = process.env.NPM_V;
-            const [maj, min, pat] = v.split(".").map(Number);
-            const ok = maj > 11 || (maj === 11 && (min > 5 || (min === 5 && (pat || 0) >= 1)));
+            const [maj, min] = v.split(".").map(Number);
+            const ok = maj > 11 || (maj === 11 && min >= 15);
             if (!ok) {
-              console.error("FAIL: trusted publishing requires npm >= 11.5.1 (got " + v + ")");
+              console.error("FAIL: staged publishing requires npm >= 11.15.0 (got " + v + ")");
               process.exit(1);
             }
           '
@@ -291,12 +295,15 @@ jobs:
           fi
           echo "Verified ${NAME}@${VERSION} artifact + manifest for $TAG @ $EXPECTED_COMMIT"
 
-      - name: Publish @arokodev/cli (trusted publishing)
+      - name: Stage @arokodev/cli (OIDC trusted publishing — stage only)
         run: |
           set -euo pipefail
-          echo "Publication step is intentionally gated."
-          echo "Requires: npm trusted publisher for @arokodev/cli on infinitypaul/aroko + this workflow,"
-          echo "environment production-release, confirm_publish=true, and tag ref dispatch."
+          echo "Stage step is intentionally gated and does NOT make the package installable."
+          echo "Requires: npm trusted publisher for @arokodev/cli on infinitypaul/aroko + this workflow"
+          echo "with stage-publish allowed and direct publish disallowed,"
+          echo "environment production-release (wait timer is NOT human approval),"
+          echo "confirm_publish=true, and tag-ref workflow_dispatch."
+          echo "After staging, an operator must run: npm stage approve <stage-id> (interactive 2FA)."
           echo "Do not use a long-lived NPM_TOKEN when trusted publishing is available."
           if [ -n "${NODE_AUTH_TOKEN:-}" ] || [ -n "${NPM_TOKEN:-}" ]; then
             echo "FAIL: long-lived npm token env must not be present for trusted publishing"
@@ -304,14 +311,17 @@ jobs:
           fi
           TGZ=$(ls dist-packages/releases/*/aroko-cli-*.tgz | head -1)
           test -n "$TGZ"
-          # npm publish uses OIDC trusted publishing (no NPM_TOKEN).
-          npm publish "$TGZ" --access public --provenance
+          # Explicit alpha dist-tag is mandatory for 0.1.0-alpha.* (npm errors without --tag).
+          # Never use dist-tag latest for this prerelease. Never direct npm publish from CI.
+          # OIDC trusted publisher must allow stage-publish only (disallow direct publish).
+          npm stage publish "$TGZ" --access public --tag alpha
 
       - name: Create GitHub Release from same artifacts
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          # Separately authorized; only runs when confirm_publish path is deliberately dispatched.
           TAG=${{ needs.release-pack.outputs.tag }}
           DIR=$(dirname "$(ls dist-packages/releases/*/aroko-cli-*.tgz | head -1)")
           gh release create "$TAG" \
