@@ -1,0 +1,37 @@
+{
+  "name": "@pairmesh/cli",
+  "version": "0.1.0-alpha.1",
+  "description": "Aroko CLI \u2014 connect AI coding agents for cross-repository pair programming",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "bin": {
+    "aroko": "./dist/index.js",
+    "pairmesh": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "bundledDependencies": [
+    "@pairmesh/client",
+    "@pairmesh/coordination",
+    "@pairmesh/mcp",
+    "@pairmesh/protocol",
+    "@pairmesh/shared"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@pairmesh/client": "workspace:*",
+    "@pairmesh/coordination": "workspace:*",
+    "@pairmesh/mcp": "workspace:*",
+    "@pairmesh/protocol": "workspace:*"
+  },
+  "license": "Apache-2.0"
+}

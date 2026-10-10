@@ -1,0 +1,22 @@
+{
+  "name": "@pairmesh/protocol",
+  "version": "0.1.0-alpha.1",
+  "description": "Aroko protocol types and schemas (wire IDs remain pairmesh.* for compatibility)",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "zod": "^4.1.8"
+  },
+  "license": "Apache-2.0"
+}

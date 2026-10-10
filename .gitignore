@@ -1,0 +1,43 @@
+node_modules/
+dist/
+dist-packages/
+coverage/
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example
+.idea/
+.vscode/
+*.tsbuildinfo
+packages/client/.test-tmp/
+.pairmesh/
+.tmp/
+.tmp-claude-probe/
+docs/validation/.r57g-workspaces/
+
+# Local editor / MCP machine paths (keep .cursor/rules)
+.cursor/mcp.json
+.cursor/mcp.json.*
+.cursor/*.local.*
+
+# Secrets / keys (defense in depth)
+*.pem
+*.key
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+ops/observability/*.env
+!ops/observability/*.env.example
+
+# Local noise
+.validation-output.txt
+**/.cursor/mcp.json.pairmesh-backup
+
+# S23-3 — generated from Git at build time (keeps working tree clean)
+packages/client/src/build-info.generated.ts
+packages/client/src/build-info.generated.js
+packages/client/src/build-info.generated.d.ts
+packages/client/src/build-info.generated.js.map
+packages/client/src/build-info.generated.d.ts.map

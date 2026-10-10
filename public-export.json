@@ -1,0 +1,118 @@
+{
+  "schemaVersion": "1.0.0",
+  "product": "Aroko",
+  "privateSourceCommit": "d4badecddf8c20e2696fd19a74def47e47a5a9fd",
+  "exportedAt": "2026-10-10T13:31:24+02:00",
+  "exportToolVersion": "1.1.0",
+  "publicBoundaryVersion": "s23-7i-v1",
+  "includedPathPolicyHash": "760a5f29449f86920b394cbf41f80b6fefa7286699a5eae1dee3c4dd9654b90d",
+  "sanitizationRulesHash": "13a1a2ad2d39a6aa1335fcdc87cbc6285d1ae05b6a5d9e08c14282781013f31d",
+  "exportTreeHash": "6aba62f270fa67bd84eb72014ddf2cab1b87896c4907c94321938e18405e25ce",
+  "exportFileCount": 571,
+  "sourceTreeClean": true,
+  "overlays": [
+    {
+      "from": "config/public-export/overlays/README.md",
+      "to": "README.md"
+    },
+    {
+      "from": "config/public-export/overlays/CONTRIBUTING.md",
+      "to": "CONTRIBUTING.md"
+    },
+    {
+      "from": "config/public-export/overlays/package.json",
+      "to": "package.json"
+    },
+    {
+      "from": "config/public-export/overlays/.github/workflows/ci.yml",
+      "to": ".github/workflows/ci.yml"
+    },
+    {
+      "from": "config/public-export/overlays/scripts/public-boundary-check.mjs",
+      "to": "scripts/public-boundary-check.mjs"
+    },
+    {
+      "from": "config/public-export/overlays/docs/getting-started.md",
+      "to": "docs/getting-started.md"
+    },
+    {
+      "from": "config/public-export/overlays/docs/installation.md",
+      "to": "docs/installation.md"
+    },
+    {
+      "from": "config/public-export/overlays/docs/upgrade.md",
+      "to": "docs/upgrade.md"
+    },
+    {
+      "from": "config/public-export/overlays/docs/known-limitations.md",
+      "to": "docs/known-limitations.md"
+    },
+    {
+      "from": "config/public-export/overlays/docs/troubleshooting.md",
+      "to": "docs/troubleshooting.md"
+    },
+    {
+      "from": "config/public-export/overlays/docs/collaboration/start-a-collaboration.md",
+      "to": "docs/collaboration/start-a-collaboration.md"
+    },
+    {
+      "from": "config/public-export/overlays/docs/collaboration/join-a-collaboration.md",
+      "to": "docs/collaboration/join-a-collaboration.md"
+    },
+    {
+      "from": "config/public-export/overlays/docs/collaboration/permissions.md",
+      "to": "docs/collaboration/permissions.md"
+    },
+    {
+      "from": "config/public-export/overlays/docs/concepts/how-aroko-works.md",
+      "to": "docs/concepts/how-aroko-works.md"
+    },
+    {
+      "from": "config/public-export/overlays/docs/concepts/architecture.md",
+      "to": "docs/concepts/architecture.md"
+    },
+    {
+      "from": "config/public-export/overlays/docs/concepts/permissions.md",
+      "to": "docs/concepts/permissions.md"
+    },
+    {
+      "from": "config/public-export/overlays/docs/concepts/collaboration.md",
+      "to": "docs/concepts/collaboration.md"
+    },
+    {
+      "from": "config/public-export/overlays/docs/concepts/proposals-and-approvals.md",
+      "to": "docs/concepts/proposals-and-approvals.md"
+    },
+    {
+      "from": "config/public-export/overlays/docs/concepts/security.md",
+      "to": "docs/concepts/security.md"
+    },
+    {
+      "from": "config/public-export/overlays/docs/concepts/security-model.md",
+      "to": "docs/concepts/security-model.md"
+    },
+    {
+      "from": "config/public-export/overlays/docs/integrations/cursor.md",
+      "to": "docs/integrations/cursor.md"
+    },
+    {
+      "from": "config/public-export/overlays/docs/integrations/claude-code.md",
+      "to": "docs/integrations/claude-code.md"
+    },
+    {
+      "from": "config/public-export/overlays/docs/integrations/gemini-cli.md",
+      "to": "docs/integrations/gemini-cli.md"
+    },
+    {
+      "from": "config/public-export/overlays/docs/integrations/relay.md",
+      "to": "docs/integrations/relay.md"
+    },
+    {
+      "from": "config/public-export/overlays/docs/cli/commands.md",
+      "to": "docs/cli/commands.md"
+    }
+  ],
+  "stripSourceComments": true,
+  "strippedCommentFiles": 114,
+  "stripSourceCommentMode": "policy-sanitize"
+}

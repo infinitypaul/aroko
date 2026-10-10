@@ -1,0 +1,29 @@
+{
+  "name": "@pairmesh/relay",
+  "version": "0.1.0-alpha.1",
+  "private": true,
+  "description": "Self-hostable content-blind Aroko relay (Stage 13 Prompt 3 alpha)",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "pairmesh-relay": "./dist/cli.js",
+    "aroko-relay": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "tsx src/cli.ts",
+    "start": "node dist/cli.js"
+  },
+  "dependencies": {
+    "@pairmesh/client": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.5"
+  },
+  "license": "Apache-2.0"
+}

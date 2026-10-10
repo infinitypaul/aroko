@@ -1,0 +1,209 @@
+# S23-7J — Tag-triggered release packaging with gated publication.
+# Pack always runs on annotated alpha tags.
+# npm / GitHub Release publication requires:
+#   - workflow_dispatch with confirm_publish=true, OR a future authorized path
+#   - GitHub Environment `production-release` approval
+#   - npm trusted publishing configured for @arokodev/cli on infinitypaul/aroko + this workflow
+# Pushing a tag alone MUST NOT publish.
+name: release
+
+on:
+  push:
+    tags:
+      - "v*-alpha.*"
+  workflow_dispatch:
+    inputs:
+      confirm_pack:
+        description: "Pack release artifacts from the current ref (must be annotated alpha tag at HEAD)"
+        type: boolean
+        default: false
+      confirm_publish:
+        description: "Publish @arokodev/cli via npm trusted publishing + GitHub Release (requires production-release approval)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-pack:
+    name: release-pack
+    if: ${{ github.event_name == 'push' || inputs.confirm_pack || inputs.confirm_publish }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Require annotated alpha tag at HEAD
+        id: tag
+        run: |
+          set -euo pipefail
+          TAG=$(git describe --exact-match --tags HEAD)
+          echo "tag=$TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          case "$TAG" in
+            v*-alpha.*) ;;
+            *)
+              echo "Release requires annotated tag matching vX.Y.Z-alpha.N (got $TAG)"
+              exit 1
+              ;;
+          esac
+          OBJECT_TYPE=$(git cat-file -t "$TAG")
+          if [ "$OBJECT_TYPE" != "tag" ]; then
+            echo "Release tag must be annotated (got object type: $OBJECT_TYPE)"
+            exit 1
+          fi
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Working tree must be clean"
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Quality gates
+        run: |
+          set -euo pipefail
+          node scripts/generate-build-info.mjs
+          pnpm -r --filter './apps/*' --filter './packages/*' run build
+          pnpm -r --filter './apps/*' --filter './packages/*' run typecheck
+          pnpm test
+          pnpm run test:provenance
+          pnpm audit --prod
+
+      - name: Package once (release mode)
+        run: pnpm run package:release
+        env:
+          AROKO_RELEASE_MODE: release
+          PAIRMESH_RELEASE_MODE: release
+
+      - name: Publish readiness dry-run
+        run: pnpm run package:publish-check
+
+      - name: Upload release artifact set
+        uses: actions/upload-artifact@v4
+        with:
+          name: aroko-release-${{ github.ref_name }}
+          path: dist-packages/releases/
+          if-no-files-found: error
+
+      - name: Stop before external publish (default)
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.confirm_publish != true }}
+        run: |
+          echo "Release pack complete. npm publish / GitHub Release not performed."
+          echo "Publication requires workflow_dispatch confirm_publish=true + production-release approval."
+
+  release-publish:
+    name: release-publish
+    needs: release-pack
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm_publish == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production-release
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download packed artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: aroko-release-${{ github.ref_name }}
+          path: dist-packages/releases/
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Verify @arokodev/cli artifact identity (fail closed)
+        run: |
+          set -euo pipefail
+          TAG=${{ needs.release-pack.outputs.tag }}
+          TGZ=$(ls dist-packages/releases/*/aroko-cli-*.tgz | head -1)
+          test -n "$TGZ"
+          DIR=$(dirname "$TGZ")
+          MANIFEST="$DIR/release-manifest.json"
+          test -f "$MANIFEST"
+          eval "$(tar -xOf "$TGZ" package/package.json | node -e '
+            const fs = require("fs");
+            const p = JSON.parse(fs.readFileSync(0, "utf8"));
+            if (p.name !== "@arokodev/cli") {
+              console.error("FAIL: packed package name must be @arokodev/cli (got " + p.name + ")");
+              process.exit(1);
+            }
+            if (p.version !== "0.1.0-alpha.1") {
+              console.error("FAIL: packed package version must be 0.1.0-alpha.1 (got " + p.version + ")");
+              process.exit(1);
+            }
+            if (p.bin?.aroko !== "./dist/index.js") {
+              console.error("FAIL: packed package must expose aroko bin");
+              process.exit(1);
+            }
+            console.log("NAME=" + JSON.stringify(p.name));
+            console.log("VERSION=" + JSON.stringify(p.version));
+          ')"
+          EXPECTED_SHA=$(node -e 'const fs=require("fs"); const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); process.stdout.write(m.artifacts[0].sha256)' "$MANIFEST")
+          ACTUAL_SHA=$(sha256sum "$TGZ" | awk '{print $1}')
+          if [ "$EXPECTED_SHA" != "$ACTUAL_SHA" ]; then
+            echo "FAIL: tarball SHA256 does not match release-manifest.json"
+            exit 1
+          fi
+          MANIFEST_TAG=$(node -e 'const fs=require("fs"); const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); process.stdout.write(m.gitTag||"")' "$MANIFEST")
+          if [ "$MANIFEST_TAG" != "$TAG" ]; then
+            echo "FAIL: manifest gitTag ($MANIFEST_TAG) does not match dispatch tag ($TAG)"
+            exit 1
+          fi
+          echo "Verified ${NAME}@${VERSION} artifact + manifest for $TAG"
+
+      - name: Publish @arokodev/cli (trusted publishing)
+        run: |
+          set -euo pipefail
+          echo "Publication step is intentionally gated."
+          echo "Requires: npm trusted publisher for @arokodev/cli on infinitypaul/aroko + this workflow,"
+          echo "environment production-release approval, and confirm_publish=true."
+          echo "Do not use a long-lived NPM_TOKEN when trusted publishing is available."
+          TGZ=$(ls dist-packages/releases/*/aroko-cli-*.tgz | head -1)
+          test -n "$TGZ"
+          # npm publish uses OIDC trusted publishing (no NPM_TOKEN).
+          npm publish "$TGZ" --access public --provenance
+
+      - name: Create GitHub Release from same artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG=${{ needs.release-pack.outputs.tag }}
+          DIR=$(dirname "$(ls dist-packages/releases/*/aroko-cli-*.tgz | head -1)")
+          gh release create "$TAG" \
+            --title "Aroko $TAG" \
+            --notes-file "$DIR/RELEASE_NOTES.md" \
+            "$DIR"/*

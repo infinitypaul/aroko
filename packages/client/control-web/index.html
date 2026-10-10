@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Aroko</title>
+    <!-- Absolute under /control/web/ so /control/web (no trailing slash) still loads assets. -->
+    <link rel="stylesheet" href="/control/web/app.css" />
+  </head>
+  <body>
+    <div id="app" class="app hidden">
+      <a class="skip-link" href="#main-content">Skip to content</a>
+
+      <aside
+        id="notify-banner"
+        class="notify-banner hidden"
+        role="region"
+        aria-label="Notification setup"
+      >
+        <div class="notify-banner-copy">
+          <strong id="notify-headline">Enable notifications</strong>
+          <p id="notify-body" class="subtle">
+            Enable notifications so you know when a collaborator needs your approval.
+          </p>
+        </div>
+        <div class="notify-banner-actions">
+          <button type="button" id="notify-primary" class="primary-btn">
+            Enable Notifications
+          </button>
+          <button type="button" id="notify-dismiss" class="ghost-btn">Not now</button>
+        </div>
+      </aside>
+
+      <div class="shell">
+        <nav class="shell-nav" aria-label="Aroko">
+          <div class="brand-block">
+            <span class="brand-mark" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <circle cx="6" cy="12" r="2.25" fill="currentColor" />
+                <circle cx="18" cy="12" r="2.25" fill="currentColor" />
+                <path
+                  d="M8.5 12h7"
+                  stroke="currentColor"
+                  stroke-width="1.75"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M14.25 9.5 17.5 12l-3.25 2.5"
+                  stroke="currentColor"
+                  stroke-width="1.75"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </span>
+            <div class="brand-text">
+              <p class="brand-name">Aroko</p>
+              <p id="shell-connection" class="brand-status">…</p>
+            </div>
+          </div>
+
+          <ul class="nav-list" role="list">
+            <li>
+              <button type="button" class="nav-item active" data-view="home" aria-current="page">
+                Home
+              </button>
+            </li>
+            <li>
+              <button type="button" class="nav-item" data-view="people">People</button>
+            </li>
+            <li>
+              <button type="button" class="nav-item" data-view="live">Live</button>
+            </li>
+            <li>
+              <button type="button" class="nav-item" data-view="needs-you">Needs you</button>
+            </li>
+            <li>
+              <button type="button" class="nav-item" data-view="history">History</button>
+            </li>
+          </ul>
+
+          <div class="nav-footer">
+            <button type="button" class="nav-item" data-view="settings">Settings</button>
+          </div>
+        </nav>
+
+        <div class="shell-main">
+          <header class="page-header">
+            <div>
+              <h1 id="page-title">Home</h1>
+              <p id="page-subtitle" class="subtle">Your collaboration overview</p>
+            </div>
+            <div id="provider-badge" class="provider-badge subtle"></div>
+          </header>
+
+          <div id="view-flash" class="view-flash hidden" role="status" aria-live="polite"></div>
+
+          <main id="main-content" class="main-content">
+            <!-- Home -->
+            <section id="view-home" class="view-panel" data-panel="home" hidden></section>
+
+            <!-- Skeletons -->
+            <section id="view-people" class="view-panel" data-panel="people" hidden></section>
+            <section id="view-settings" class="view-panel" data-panel="settings" hidden></section>
+
+            <!-- Work lists (Live / Needs you / History) — preserve action detail workflow -->
+            <section id="view-work" class="view-panel" data-panel="work" hidden>
+              <div class="layout">
+                <section class="list-panel">
+                  <div id="list-meta" class="list-meta"></div>
+                  <ul id="action-list" class="action-list" aria-live="off"></ul>
+                </section>
+                <section id="detail-panel" class="detail-panel hidden" aria-live="polite">
+                  <button type="button" id="detail-close" class="ghost-btn">← Back</button>
+                  <div id="detail-content"></div>
+                </section>
+              </div>
+            </section>
+          </main>
+        </div>
+      </div>
+    </div>
+
+    <div id="auth-gate" class="auth-gate">
+      <div class="auth-card">
+        <div class="auth-brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+              <circle cx="6" cy="12" r="2.25" fill="currentColor" />
+              <circle cx="18" cy="12" r="2.25" fill="currentColor" />
+              <path
+                d="M8.5 12h7"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+              />
+              <path
+                d="M14.25 9.5 17.5 12l-3.25 2.5"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </span>
+          <h2>Aroko</h2>
+        </div>
+        <p class="subtle">
+          Local Control Center for your coding agent. Prefer
+          <code>aroko open</code> — it opens already signed in. Or paste the token from
+          <code>aroko control status --show-token</code>.
+        </p>
+        <label class="field" for="token-input">
+          <span>Control token</span>
+          <input
+            id="token-input"
+            type="password"
+            autocomplete="off"
+            placeholder="Paste token"
+            spellcheck="false"
+          />
+        </label>
+        <button type="button" id="token-submit" class="primary-btn">Open Aroko</button>
+        <p id="auth-error" class="error hidden" role="alert"></p>
+      </div>
+    </div>
+
+    <script src="/control/web/app.js" type="module"></script>
+  </body>
+</html>

@@ -1,0 +1,55 @@
+{
+  "name": "aroko",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Aroko monorepo — permissioned context across people and their tools",
+  "packageManager": "pnpm@10.15.1",
+  "scripts": {
+    "build": "node scripts/generate-build-info.mjs && pnpm -r --filter './apps/*' --filter './packages/*' run build",
+    "typecheck": "node scripts/generate-build-info.mjs && pnpm -r --filter './apps/*' --filter './packages/*' run typecheck",
+    "test": "node scripts/generate-build-info.mjs && vitest run",
+    "lint": "eslint . --ext .ts --max-warnings=0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "package:pairmesh": "node scripts/package-pairmesh.mjs",
+    "package:aroko": "node scripts/package-pairmesh.mjs",
+    "package:release": "node scripts/package-release.mjs",
+    "package:validate": "node scripts/validate-clean-install.mjs",
+    "package:audit": "node scripts/audit-package-size.mjs",
+    "package:publish-check": "node scripts/check-publish-readiness.mjs",
+    "release:validate-identity": "node scripts/release/cli-validate.mjs",
+    "test:provenance": "node scripts/generate-build-info.mjs && vitest run scripts/release/provenance.test.ts",
+    "aroko": "node scripts/run-aroko-cli.mjs",
+    "pairmesh": "node scripts/run-pairmesh-cli.mjs",
+    "public-boundary": "node scripts/public-boundary-check.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.34.0",
+    "@types/node": "^24.3.0",
+    "@typescript-eslint/eslint-plugin": "^8.41.0",
+    "@typescript-eslint/parser": "^8.41.0",
+    "eslint": "^9.34.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.6.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4",
+    "@modelcontextprotocol/client": "^2.0.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "qs": ">=6.16.0",
+      "proxy-addr": ">=2.0.8"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/infinitypaul/aroko.git"
+  },
+  "homepage": "https://github.com/infinitypaul/aroko",
+  "bugs": {
+    "url": "https://github.com/infinitypaul/aroko/issues"
+  },
+  "license": "Apache-2.0"
+}

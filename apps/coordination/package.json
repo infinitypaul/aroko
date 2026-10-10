@@ -1,0 +1,43 @@
+{
+  "name": "@pairmesh/coordination",
+  "version": "0.1.0-alpha.1",
+  "description": "Aroko A2A coordination",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./a2a": {
+      "types": "./dist/a2a/index.d.ts",
+      "default": "./dist/a2a/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "tsx src/index.ts",
+    "agent": "tsx src/cli/agent.ts",
+    "a2a:send": "tsx src/cli/send.ts"
+  },
+  "dependencies": {
+    "@a2a-js/sdk": "^1.0.1",
+    "@pairmesh/client": "workspace:*",
+    "@pairmesh/protocol": "workspace:*",
+    "@pairmesh/shared": "workspace:*",
+    "express": "^5.2.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6"
+  },
+  "license": "Apache-2.0"
+}

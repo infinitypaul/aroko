@@ -1,0 +1,35 @@
+{
+  "name": "@pairmesh/client",
+  "version": "0.1.0-alpha.1",
+  "description": "Aroko client library",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "control-web",
+    "vendor"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node -e \"require('node:fs').cpSync('control-web','dist/control-web',{recursive:true})\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@a2a-js/sdk": "^1.0.1",
+    "@modelcontextprotocol/server": "^2.0.0",
+    "@noble/ciphers": "^2.0.0",
+    "@noble/curves": "^2.0.0",
+    "@noble/hashes": "^2.0.0",
+    "@pairmesh/protocol": "workspace:*",
+    "@pairmesh/shared": "workspace:*",
+    "ws": "^8.18.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.13"
+  },
+  "license": "Apache-2.0"
+}

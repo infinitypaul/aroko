@@ -1,0 +1,20 @@
+export {
+  PAIRMESH_CAPABILITY_REGISTRY,
+  PAIRMESH_FUTURE_CAPABILITIES,
+  PAIRMESH_PERMISSION_REQUEST_TTL_MS,
+  PAIRMESH_V1_CAPABILITIES,
+  PAIRMESH_ACTION_CAPABILITIES,
+  PAIRMESH_GRANTABLE_CAPABILITIES,
+  CapabilityGrantPolicySchema,
+  CapabilityIdSchema,
+  PermissionDecisionSchema,
+  PermissionDecisionValueSchema,
+  type CapabilityDefinition,
+  type CapabilityGrantPolicy,
+  type CapabilityId,
+  type PairMeshV1CapabilityId,
+  type PairMeshActionCapabilityId,
+  type PairMeshGrantableCapabilityId,
+  type PermissionDecision,
+  type PermissionDecisionValue
+} from "@pairmesh/protocol";
