@@ -219,6 +219,24 @@ describe("S23-3 release provenance", () => {
     }
   });
 
+  it("accepts temporary S23-7J clean recovery remote infinitypaul/aroko-public-clean", () => {
+    const dir = createTempRepo();
+    try {
+      git(dir, [
+        "remote",
+        "set-url",
+        "origin",
+        "https://github.com/infinitypaul/aroko-public-clean.git"
+      ]);
+      git(dir, ["tag", "-a", "v0.1.0-alpha.1", "-m", "test"]);
+      const result = runValidate(dir, "release");
+      expect(result.gitTag).toBe("v0.1.0-alpha.1");
+      expect(result.repositoryRole).toBe("public");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("rejects wrong canonical remote for release", () => {
     const dir = createTempRepo();
     try {

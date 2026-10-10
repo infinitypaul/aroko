@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 /* eslint-env node */
+/**
+ * S23-3 — Git source identity (SOURCE-TRACEABLE).
+ * Reads identity only from the actual checkout. Never invents commit SHAs.
+ */
 
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -10,12 +14,20 @@ export const ENGINEERING_CANONICAL_REPO_HTTPS =
   "https://github.com/infinitypaul/aroko-internal.git";
 export const PUBLIC_PRODUCT_REPO_SLUG = "infinitypaul/aroko";
 export const PUBLIC_PRODUCT_REPO_HTTPS = "https://github.com/infinitypaul/aroko.git";
+/**
+ * Temporary S23-7J clean-history recovery repo. Accepted only until cutover to
+ * infinitypaul/aroko; not an OIDC trusted-publish target.
+ */
+export const PUBLIC_CLEAN_RECOVERY_REPO_SLUG = "infinitypaul/aroko-public-clean";
 /** Remotes accepted for release-mode packaging (engineering or public-candidate). */
 export const ACCEPTED_RELEASE_REMOTE_SLUGS = [
   ENGINEERING_CANONICAL_REPO_SLUG,
-  PUBLIC_PRODUCT_REPO_SLUG
+  PUBLIC_PRODUCT_REPO_SLUG,
+  PUBLIC_CLEAN_RECOVERY_REPO_SLUG
 ];
+/** @deprecated Prefer ENGINEERING_CANONICAL_* / PUBLIC_PRODUCT_* (S23-7F dual-repo). */
 export const CANONICAL_REPO_HTTPS = ENGINEERING_CANONICAL_REPO_HTTPS;
+/** @deprecated Prefer ENGINEERING_CANONICAL_REPO_SLUG (S23-7F). */
 export const CANONICAL_REPO_SLUG = ENGINEERING_CANONICAL_REPO_SLUG;
 export const ALPHA_TAG_RE = /^v(\d+\.\d+\.\d+-alpha\.\d+)$/;
 
@@ -131,7 +143,10 @@ export function assertCanonicalRemote(repoRoot, { required = false } = {}) {
       `origin remote must be one of ${ACCEPTED_RELEASE_REMOTE_SLUGS.join(" | ")} (got ${remote}).`
     );
   }
-  const role = normalized === PUBLIC_PRODUCT_REPO_SLUG ? "public" : "engineering";
+  const role =
+    normalized === PUBLIC_PRODUCT_REPO_SLUG || normalized === PUBLIC_CLEAN_RECOVERY_REPO_SLUG
+      ? "public"
+      : "engineering";
   return { remote, ok: true, role, slug: normalized };
 }
 
