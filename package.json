@@ -20,7 +20,7 @@
     "package:publish-check": "node scripts/check-publish-readiness.mjs",
     "release:validate-identity": "node scripts/release/cli-validate.mjs",
     "test:provenance": "node scripts/generate-build-info.mjs && vitest run scripts/release/provenance.test.ts",
-    "test:release-gates": "vitest run scripts/release/release-gates.test.ts scripts/release/public-naming-contract.test.ts",
+    "test:release-gates": "vitest run scripts/release/release-gates.test.ts scripts/release/public-naming-contract.test.ts scripts/release/verify-annotated-release-tag.test.ts",
     "aroko": "node scripts/run-aroko-cli.mjs",
     "pairmesh": "node scripts/run-pairmesh-cli.mjs",
     "public-boundary": "node scripts/public-boundary-check.mjs"

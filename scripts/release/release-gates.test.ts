@@ -26,9 +26,10 @@ describe("S23-7J release gates", () => {
     expect(releaseWorkflow).toContain("Stop before external publish");
   });
 
-  it("requires tag ref for confirm_publish path", () => {
-    expect(releaseWorkflow).toContain("github.ref_type == 'tag'");
-    expect(releaseWorkflow).toContain("confirm_publish requires workflow_dispatch on a tag ref");
+  it("requires tag ref for every release-pack path", () => {
+    expect(releaseWorkflow).toContain("github.ref_type");
+    expect(releaseWorkflow).toContain("release pack requires workflow run on a tag ref");
+    expect(releaseWorkflow).toMatch(/github\.ref_type\s*==\s*'tag'/);
   });
 
   it("binds publish to infinitypaul/aroko repository identity", () => {
@@ -105,6 +106,15 @@ describe("S23-7J release gates", () => {
     expect(releaseStepIdx).toBeGreaterThan(stageIdx);
     const stageBlock = releaseWorkflow.slice(stageIdx - 400, stageIdx);
     expect(stageBlock).not.toContain("confirm_github_release");
+  });
+
+  it("restores and verifies annotated tag via full refs/tags ref (S23-7Q)", () => {
+    expect(releaseWorkflow).toContain("verify-annotated-release-tag.mjs");
+    expect(releaseWorkflow).toContain("--fetch-annotated-tag true");
+    expect(releaseWorkflow).toContain("ref: ${{ github.ref }}");
+    expect(releaseWorkflow).toContain("release pack requires workflow run on a tag ref");
+    // Must not rely solely on short-name cat-file of describe output.
+    expect(releaseWorkflow).not.toMatch(/OBJECT_TYPE=\$\(git cat-file -t "\$TAG"\)/);
   });
 });
 
