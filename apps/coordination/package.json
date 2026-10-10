@@ -1,6 +1,6 @@
 {
   "name": "@pairmesh/coordination",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "description": "Aroko A2A coordination",
   "type": "module",
   "engines": {

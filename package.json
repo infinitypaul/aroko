@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Aroko monorepo \u2014 permissioned context across people and their tools",
+  "description": "Aroko monorepo — permissioned context across people and their tools",
   "packageManager": "pnpm@10.15.1",
   "scripts": {
     "build": "node scripts/generate-build-info.mjs && pnpm -r --filter './apps/*' --filter './packages/*' run build",
@@ -20,7 +20,6 @@
     "package:publish-check": "node scripts/check-publish-readiness.mjs",
     "release:validate-identity": "node scripts/release/cli-validate.mjs",
     "test:provenance": "node scripts/generate-build-info.mjs && vitest run scripts/release/provenance.test.ts",
-    "test:release-gates": "vitest run scripts/release/release-gates.test.ts scripts/release/public-naming-contract.test.ts scripts/release/verify-annotated-release-tag.test.ts",
     "aroko": "node scripts/run-aroko-cli.mjs",
     "pairmesh": "node scripts/run-pairmesh-cli.mjs",
     "public-boundary": "node scripts/public-boundary-check.mjs"
@@ -35,8 +34,8 @@
     "prettier": "^3.6.2",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
-    "vitest": "^4.1.11",
-    "@modelcontextprotocol/client": "^2.2.0"
+    "vitest": "^3.2.4",
+    "@modelcontextprotocol/client": "^2.0.0"
   },
   "pnpm": {
     "overrides": {
