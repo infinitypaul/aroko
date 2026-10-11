@@ -41,3 +41,6 @@ packages/client/src/build-info.generated.js
 packages/client/src/build-info.generated.d.ts
 packages/client/src/build-info.generated.js.map
 packages/client/src/build-info.generated.d.ts.map
+
+# Created by actions/setup-node registry-url; must not dirty release packs
+.npmrc

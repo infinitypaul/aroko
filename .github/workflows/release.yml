@@ -131,7 +131,17 @@ jobs:
           pnpm audit --prod
 
       - name: Package once (release mode)
-        run: pnpm run package:release
+        run: |
+          set -euo pipefail
+          # actions/setup-node registry-url writes an untracked .npmrc that must not
+          # fail release provenance dirty-tree checks.
+          rm -f .npmrc
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "FAIL: working tree dirty before package:release:"
+            git status --porcelain
+            exit 1
+          fi
+          pnpm run package:release
         env:
           AROKO_RELEASE_MODE: release
           PAIRMESH_RELEASE_MODE: release
