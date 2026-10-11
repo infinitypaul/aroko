@@ -396,9 +396,7 @@ export class HostedPairMeshRelay {
   private reapIdle(): void {
     const now = Date.now();
     for (const [socket, state] of this.openSockets) {
-      const idleLimit = state.attached
-        ? this.opts.idleTimeoutMs
-        : this.opts.unattachedTimeoutMs;
+      const idleLimit = state.attached ? this.opts.idleTimeoutMs : this.opts.unattachedTimeoutMs;
       const lastActive = state.attached?.lastActiveAt ?? state.lastActiveAt;
       if (now - lastActive > idleLimit) {
         if (!state.attached) {
@@ -555,7 +553,7 @@ export class HostedPairMeshRelay {
         JSON.stringify({
           status: "ok",
           role: "pairmesh-relay",
-          version: "0.1.0-alpha.3"
+          version: "0.1.0-alpha.4"
         })
       );
       return;

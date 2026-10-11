@@ -33,7 +33,7 @@ describe("S23-7J release gates", () => {
   });
 
   it("binds publish to infinitypaul/aroko repository identity", () => {
-    expect(releaseWorkflow).toContain('infinitypaul/aroko');
+    expect(releaseWorkflow).toContain("infinitypaul/aroko");
     expect(releaseWorkflow).toContain("1413375921");
     expect(releaseWorkflow).toContain("unexpected repository id");
   });
@@ -45,11 +45,11 @@ describe("S23-7J release gates", () => {
   });
 
   it("fail-closes on package name/version/bin mismatch", () => {
-    expect(releaseWorkflow).toContain('@arokodev/cli');
+    expect(releaseWorkflow).toContain("@arokodev/cli");
     expect(releaseWorkflow).toContain('EXPECTED_VERSION="${TAG#v}"');
     expect(releaseWorkflow).toContain("packed package version must match tag");
     expect(releaseWorkflow).toContain("pairmesh bin");
-    expect(publishCheck).toContain('@arokodev/cli');
+    expect(publishCheck).toContain("@arokodev/cli");
     expect(packagePairmesh).toContain('PUBLIC_CLI_PACKAGE_NAME = "@arokodev/cli"');
     expect(updateConstants).toContain('CANONICAL_CLI_PACKAGE_NAME = "@arokodev/cli"');
   });
@@ -65,9 +65,7 @@ describe("S23-7J release gates", () => {
     const beforeJobs = releaseWorkflow.split(/^jobs:/m)[0] ?? "";
     expect(beforeJobs).toMatch(/permissions:\s*\n\s*contents:\s*read/);
     expect(beforeJobs).not.toMatch(/id-token:\s*write/);
-    expect(releaseWorkflow).toMatch(
-      /release-publish:[\s\S]*permissions:[\s\S]*id-token:\s*write/
-    );
+    expect(releaseWorkflow).toMatch(/release-publish:[\s\S]*permissions:[\s\S]*id-token:\s*write/);
   });
 
   it("uses artifact name keyed by packed tag not ambiguous ref_name", () => {
@@ -94,9 +92,7 @@ describe("S23-7J release gates", () => {
 
   it("gates GitHub Release separately from npm staging", () => {
     expect(releaseWorkflow).toContain("confirm_github_release");
-    expect(releaseWorkflow).toMatch(
-      /confirm_publish:[\s\S]*does NOT create a GitHub Release/
-    );
+    expect(releaseWorkflow).toMatch(/confirm_publish:[\s\S]*does NOT create a GitHub Release/);
     expect(releaseWorkflow).toMatch(
       /Create GitHub Release from same artifacts[\s\S]*if:\s*\$\{\{\s*inputs\.confirm_github_release\s*==\s*true\s*\}\}/
     );
@@ -138,7 +134,6 @@ describe("S23-7J release gates", () => {
     const beforeStage = publishBlock.slice(0, stageIdx);
     expect(beforeStage).not.toContain("rm -f .npmrc");
   });
-
 });
 
 describe("S23-7J negative gate simulations", () => {
@@ -194,11 +189,11 @@ describe("S23-7J negative gate simulations", () => {
     repoId: "1413375921",
     packedCommit: "97fa9c3e60849487cf5964b157abfe9d6023311a",
     checkoutCommit: "97fa9c3e60849487cf5964b157abfe9d6023311a",
-    packedTag: "v0.1.0-alpha.3",
-    headTag: "v0.1.0-alpha.3",
+    packedTag: "v0.1.0-alpha.4",
+    headTag: "v0.1.0-alpha.4",
     packageName: "@arokodev/cli",
-    packageVersion: "0.1.0-alpha.3",
-    manifestTag: "v0.1.0-alpha.3",
+    packageVersion: "0.1.0-alpha.4",
+    manifestTag: "v0.1.0-alpha.4",
     manifestCommit: "97fa9c3e60849487cf5964b157abfe9d6023311a",
     expectedSha: "abc",
     actualSha: "abc",
