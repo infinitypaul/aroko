@@ -119,6 +119,7 @@ describe("S23-7J release gates", () => {
   });
   it("removes setup-node .npmrc before package:release and keeps dirty-tree fail-closed (S23-7S)", () => {
     expect(releaseWorkflow).toContain("rm -f .npmrc");
+    expect(releaseWorkflow).toContain("rm -rf docs/validation");
     expect(releaseWorkflow).toContain("working tree dirty before package:release");
     // Cleanup must sit in the pack job package step, not disable provenance.
     const packIdx = releaseWorkflow.indexOf("Package once (release mode)");

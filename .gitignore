@@ -44,3 +44,6 @@ packages/client/src/build-info.generated.d.ts.map
 
 # Created by actions/setup-node registry-url; must not dirty release packs
 .npmrc
+
+# Test-written evidence (internal may track; public export excludes this tree)
+docs/validation/
