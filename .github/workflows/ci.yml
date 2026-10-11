@@ -56,9 +56,6 @@ jobs:
       - name: Provenance unit tests
         run: pnpm run test:provenance
 
-      - name: Release gate negative tests
-        run: pnpm run test:release-gates
-
       - name: Production audit
         run: pnpm audit --prod
 

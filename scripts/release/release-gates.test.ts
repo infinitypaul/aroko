@@ -46,7 +46,8 @@ describe("S23-7J release gates", () => {
 
   it("fail-closes on package name/version/bin mismatch", () => {
     expect(releaseWorkflow).toContain('@arokodev/cli');
-    expect(releaseWorkflow).toContain("0.1.0-alpha.1");
+    expect(releaseWorkflow).toContain('EXPECTED_VERSION="${TAG#v}"');
+    expect(releaseWorkflow).toContain("packed package version must match tag");
     expect(releaseWorkflow).toContain("pairmesh bin");
     expect(publishCheck).toContain('@arokodev/cli');
     expect(packagePairmesh).toContain('PUBLIC_CLI_PACKAGE_NAME = "@arokodev/cli"');
@@ -154,7 +155,10 @@ describe("S23-7J negative gate simulations", () => {
     if (input.manifestCommit !== input.packedCommit) {
       return { ok: false, reason: "MANIFEST_COMMIT_MISMATCH" };
     }
-    if (input.packageName !== "@arokodev/cli" || input.packageVersion !== "0.1.0-alpha.1") {
+    const expectedVersion = input.packedTag.startsWith("v")
+      ? input.packedTag.slice(1)
+      : input.packedTag;
+    if (input.packageName !== "@arokodev/cli" || input.packageVersion !== expectedVersion) {
       return { ok: false, reason: "PACKAGE_IDENTITY_MISMATCH" };
     }
     if (input.expectedSha !== input.actualSha) {
@@ -168,11 +172,11 @@ describe("S23-7J negative gate simulations", () => {
     repoId: "1413375921",
     packedCommit: "97fa9c3e60849487cf5964b157abfe9d6023311a",
     checkoutCommit: "97fa9c3e60849487cf5964b157abfe9d6023311a",
-    packedTag: "v0.1.0-alpha.1",
-    headTag: "v0.1.0-alpha.1",
+    packedTag: "v0.1.0-alpha.2",
+    headTag: "v0.1.0-alpha.2",
     packageName: "@arokodev/cli",
-    packageVersion: "0.1.0-alpha.1",
-    manifestTag: "v0.1.0-alpha.1",
+    packageVersion: "0.1.0-alpha.2",
+    manifestTag: "v0.1.0-alpha.2",
     manifestCommit: "97fa9c3e60849487cf5964b157abfe9d6023311a",
     expectedSha: "abc",
     actualSha: "abc",

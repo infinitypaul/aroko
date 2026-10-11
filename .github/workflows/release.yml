@@ -241,15 +241,17 @@ jobs:
           NOTES="$DIR/RELEASE_NOTES.md"
           test -f "$MANIFEST"
           test -f "$NOTES"
-          eval "$(tar -xOf "$TGZ" package/package.json | node -e '
+          EXPECTED_VERSION="${TAG#v}"
+          eval "$(tar -xOf "$TGZ" package/package.json | EXPECTED_VERSION="$EXPECTED_VERSION" node -e '
             const fs = require("fs");
             const p = JSON.parse(fs.readFileSync(0, "utf8"));
+            const expected = process.env.EXPECTED_VERSION;
             if (p.name !== "@arokodev/cli") {
               console.error("FAIL: packed package name must be @arokodev/cli (got " + p.name + ")");
               process.exit(1);
             }
-            if (p.version !== "0.1.0-alpha.1") {
-              console.error("FAIL: packed package version must be 0.1.0-alpha.1 (got " + p.version + ")");
+            if (!expected || p.version !== expected) {
+              console.error("FAIL: packed package version must match tag (" + expected + ") (got " + p.version + ")");
               process.exit(1);
             }
             if (p.bin?.aroko !== "./dist/index.js") {

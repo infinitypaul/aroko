@@ -35,7 +35,7 @@ pnpm build
 node apps/cli/dist/index.js --version
 ```
 
-You should see `0.1.0-alpha.1` (or the version in this checkout).
+You should see `0.1.0-alpha.2` (or the version in this checkout).
 
 During development you can also run:
 

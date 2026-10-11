@@ -1,12 +1,4 @@
 #!/usr/bin/env node
-/**
- * S23-7Q — Fail-closed annotated release-tag verification.
- *
- * actions/checkout@v4 can overwrite refs/tags/<name> with the peeled commit
- * SHA after first fetching the annotated tag object. Callers should set
- * fetchAnnotatedTag=true in CI to restore the annotated object from origin,
- * then verify using the full refs/tags/<name> ref.
- */
 import { execFileSync } from "node:child_process";
 import { appendFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";

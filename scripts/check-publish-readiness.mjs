@@ -31,7 +31,10 @@ async function main() {
     cliPackage.name === "@pairmesh/cli",
     "scoped package name @pairmesh/cli (workspace; public staging uses @arokodev/cli)"
   );
-  check(cliPackage.version === "0.1.0-alpha.1", "pre-release version 0.1.0-alpha.1");
+  check(
+    typeof cliPackage.version === "string" && /^0\.1\.0-alpha\.\d+$/.test(cliPackage.version),
+    `pre-release version ${cliPackage.version}`
+  );
   check(cliPackage.bin?.aroko === "./dist/index.js", "aroko bin entry");
   check(cliPackage.bin?.pairmesh === "./dist/index.js", "pairmesh compatibility bin entry");
   check(cliPackage.engines?.node === ">=20.0.0", "engines.node >=20.0.0");
@@ -68,7 +71,10 @@ async function main() {
   });
   const packedPackage = JSON.parse(packedPackageJson);
   check(packedPackage.name === "@arokodev/cli", "packed name is @arokodev/cli");
-  check(packedPackage.version === "0.1.0-alpha.1", "packed version is 0.1.0-alpha.1");
+  check(
+    packedPackage.version === cliPackage.version,
+    `packed version is ${cliPackage.version}`
+  );
   check(packedPackage.bin?.aroko === "./dist/index.js", "packed aroko bin entry");
   check(packedPackage.bin?.pairmesh === "./dist/index.js", "packed pairmesh bin entry");
   check(

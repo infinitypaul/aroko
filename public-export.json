@@ -1,14 +1,14 @@
 {
   "schemaVersion": "1.0.0",
   "product": "Aroko",
-  "privateSourceCommit": "d4badecddf8c20e2696fd19a74def47e47a5a9fd",
-  "exportedAt": "2026-10-10T13:31:24+02:00",
+  "privateSourceCommit": "cf3b383cfc76125748685ef3037be2c7ee4090ed",
+  "exportedAt": "2026-10-11T08:40:54+02:00",
   "exportToolVersion": "1.1.0",
-  "publicBoundaryVersion": "s23-7i-v1",
-  "includedPathPolicyHash": "760a5f29449f86920b394cbf41f80b6fefa7286699a5eae1dee3c4dd9654b90d",
-  "sanitizationRulesHash": "13a1a2ad2d39a6aa1335fcdc87cbc6285d1ae05b6a5d9e08c14282781013f31d",
-  "exportTreeHash": "6aba62f270fa67bd84eb72014ddf2cab1b87896c4907c94321938e18405e25ce",
-  "exportFileCount": 571,
+  "publicBoundaryVersion": "s23-7k-v1",
+  "includedPathPolicyHash": "21a7af8c20d000b35f621b2de5c6f1364b18ed1f2013fec53257ab371271786d",
+  "sanitizationRulesHash": "b9b33ffe9b9b9c51673ca4f2f4cf40928f23e7ec47acbc1f79e4d60b2f4910f0",
+  "exportTreeHash": "00a24e0af7b36123159c594f0547b3a00e8571efaf8fba55cb7bc5ea99839ed2",
+  "exportFileCount": 576,
   "sourceTreeClean": true,
   "overlays": [
     {
@@ -86,6 +86,10 @@
     {
       "from": "config/public-export/overlays/docs/concepts/security.md",
       "to": "docs/concepts/security.md"
+    },
+    {
+      "from": "config/public-export/overlays/docs/security/public-alpha-security-boundary.md",
+      "to": "docs/security/public-alpha-security-boundary.md"
     },
     {
       "from": "config/public-export/overlays/docs/concepts/security-model.md",
