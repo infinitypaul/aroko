@@ -71,3 +71,24 @@ describe("S23-7S setup-node .npmrc cleanup", () => {
     }
   });
 });
+
+  it("removes simulated public-export-excluded docs/validation test output", () => {
+    const dir = mkdtempSync(join(tmpdir(), "aroko-valout-"));
+    try {
+      git(dir, ["init"]);
+      git(dir, ["config", "user.email", "test@example.com"]);
+      git(dir, ["config", "user.name", "test"]);
+      writeFileSync(join(dir, "README"), "x\n");
+      git(dir, ["add", "."]);
+      git(dir, ["commit", "-m", "init"]);
+      execFileSync("mkdir", ["-p", "docs/validation/r5-7-ux-evidence"], { cwd: dir });
+      writeFileSync(join(dir, "docs/validation/r5-7-ux-evidence/out.json"), "{}\n");
+      expect(git(dir, ["status", "--porcelain"])).toMatch(/docs\//);
+      execFileSync("rm", ["-rf", "docs/validation"], { cwd: dir });
+      execFileSync("rm", ["-f", ".npmrc"], { cwd: dir });
+      expect(git(dir, ["status", "--porcelain"])).toBe("");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+

@@ -133,9 +133,12 @@ jobs:
       - name: Package once (release mode)
         run: |
           set -euo pipefail
-          # actions/setup-node registry-url writes an untracked .npmrc that must not
-          # fail release provenance dirty-tree checks.
+          # CI-generated paths that must not fail release provenance dirty-tree checks:
+          # - actions/setup-node registry-url writes an untracked .npmrc
+          # - public export excludes docs/validation/**, but pnpm test (r5-7 evidence)
+          #   may recreate that tree as untracked output on the public projection
           rm -f .npmrc
+          rm -rf docs/validation
           if [ -n "$(git status --porcelain)" ]; then
             echo "FAIL: working tree dirty before package:release:"
             git status --porcelain
