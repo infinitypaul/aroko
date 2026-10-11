@@ -1,0 +1,211 @@
+# S23-7U — Nonpublishing CI packaging diagnostic (no permanent tags, no npm publish).
+#
+# Exercises the same toolchain and package:release path as release-pack without
+# requiring a newly pushed public alpha tag. Uses a disposable local annotated
+# tag at HEAD (never pushed) and a local bare remote so --fetch-annotated-tag
+# cannot rewrite production tags on GitHub.
+name: release-pack-diagnostic
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "scripts/package-pairmesh.mjs"
+      - "scripts/package-release.mjs"
+      - "scripts/release/**"
+      - ".github/workflows/release.yml"
+      - ".github/workflows/release-pack-diagnostic.yml"
+      - "apps/cli/package.json"
+      - "apps/**/package.json"
+      - "packages/**/package.json"
+      - "pnpm-lock.yaml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-pack-diagnostic-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pack-diagnostic:
+    name: pack-diagnostic
+    # Canonical validation is public-only. Soft-skip on internal so PR checks
+    # stay green without weakening the public repository-id / credential guards.
+    if: github.repository == 'infinitypaul/aroko'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # Fail closed: no OIDC / contents:write — cannot publish or create Releases.
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Guard repository + refuse publish credentials
+        run: |
+          set -euo pipefail
+          if [ "${{ github.repository }}" != "infinitypaul/aroko" ]; then
+            echo "FAIL: diagnostic runs only on infinitypaul/aroko (got ${{ github.repository }})"
+            exit 1
+          fi
+          if [ "${{ github.repository_id }}" != "1413375921" ]; then
+            echo "FAIL: unexpected repository id ${{ github.repository_id }}"
+            exit 1
+          fi
+          if [ -n "${NODE_AUTH_TOKEN:-}" ] || [ -n "${NPM_TOKEN:-}" ]; then
+            echo "FAIL: diagnostic must not receive npm auth tokens"
+            exit 1
+          fi
+
+      - name: Setup Node (no registry-url / no auth injection)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Require npm toolchain
+        run: |
+          set -euo pipefail
+          npm install -g npm@^11.15.0
+          echo "node=$(node -v) npm=$(npm -v) pnpm_pending=yes"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Disposable local annotated tag + bare fetch fixture
+        id: tag
+        run: |
+          set -euo pipefail
+          # Disable pushes for this job (defense in depth).
+          git remote set-url --push origin DISABLED-NO-PUSH-DIAGNOSTIC
+
+          VERSION=$(node -e 'console.log(require("./apps/cli/package.json").version)')
+          TAG="v${VERSION}"
+          HEAD=$(git rev-parse HEAD)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "commit=$HEAD" >> "$GITHUB_OUTPUT"
+          echo "node=$(node -v)" >> "$GITHUB_OUTPUT"
+          echo "npm=$(npm -v)" >> "$GITHUB_OUTPUT"
+          echo "pnpm=$(pnpm -v)" >> "$GITHUB_OUTPUT"
+
+          BARE="$RUNNER_TEMP/aroko-diag-bare.git"
+          git init --bare "$BARE"
+          git push "$BARE" "HEAD:refs/heads/diag"
+
+          # Replace any fetched production tag tip with a disposable local annotated tag at HEAD.
+          git tag -d "$TAG" 2>/dev/null || true
+          git -c user.name='S23-7U Diagnostic' -c user.email='diagnostic@invalid' \
+            tag -a "$TAG" -m "S23-7U disposable local-only diagnostic tag (never pushed)"
+          git push "$BARE" "refs/tags/$TAG"
+
+          # Origin URL must satisfy release identity; fetches go to bare only.
+          git remote set-url origin "https://github.com/infinitypaul/aroko.git"
+          git config --local "url.${BARE}.insteadOf" "https://github.com/infinitypaul/aroko.git"
+
+          # Simulate actions/checkout peeling annotated tags to commit SHAs.
+          git update-ref "refs/tags/${TAG}" "$HEAD"
+          test "$(git cat-file -t "refs/tags/${TAG}")" = "commit"
+
+          export GITHUB_REPOSITORY="infinitypaul/aroko"
+          export GITHUB_REPOSITORY_ID="1413375921"
+          export GITHUB_REF="refs/tags/${TAG}"
+          export GITHUB_REF_TYPE="tag"
+          export GITHUB_REF_NAME="$TAG"
+          node scripts/release/verify-annotated-release-tag.mjs --fetch-annotated-tag true
+          test "$(git cat-file -t "refs/tags/${TAG}")" = "tag"
+          test "$(git rev-parse "${TAG}^{}")" = "$HEAD"
+          echo "Disposable tag verified at $HEAD (local-only; not pushed)."
+
+      - name: Quality gates
+        run: |
+          set -euo pipefail
+          node scripts/generate-build-info.mjs
+          pnpm -r --filter './apps/*' --filter './packages/*' run build
+          pnpm -r --filter './apps/*' --filter './packages/*' run typecheck
+          pnpm test
+          pnpm run test:provenance
+          pnpm run test:release-gates
+          pnpm audit --prod
+          pnpm run public-boundary
+
+      - name: Package once (release mode)
+        run: |
+          set -euo pipefail
+          rm -f .npmrc
+          rm -rf docs/validation
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "FAIL: working tree dirty before package:release:"
+            git status --porcelain
+            exit 1
+          fi
+          pnpm run package:release
+        env:
+          AROKO_RELEASE_MODE: release
+          PAIRMESH_RELEASE_MODE: release
+
+      - name: Publish readiness dry-run
+        run: pnpm run package:publish-check
+
+      - name: Verify artifact + smoke install
+        id: verify
+        run: |
+          set -euo pipefail
+          TAG=${{ steps.tag.outputs.tag }}
+          EXPECTED_VERSION=${{ steps.tag.outputs.version }}
+          EXPECTED_COMMIT=${{ steps.tag.outputs.commit }}
+          TGZ=$(ls dist-packages/releases/*/aroko-cli-*.tgz | head -1)
+          test -n "$TGZ"
+          TGZ_ABS="$(cd "$(dirname "$TGZ")" && pwd)/$(basename "$TGZ")"
+          DIR=$(dirname "$TGZ_ABS")
+          MANIFEST="$DIR/release-manifest.json"
+          test -f "$MANIFEST"
+          EXPECTED_SHA=$(node -e 'const fs=require("fs"); const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); process.stdout.write(m.artifacts[0].sha256)' "$MANIFEST")
+          ACTUAL_SHA=$(sha256sum "$TGZ_ABS" | awk '{print $1}')
+          test "$EXPECTED_SHA" = "$ACTUAL_SHA"
+          MANIFEST_SHA=$(sha256sum "$MANIFEST" | awk '{print $1}')
+          echo "tarball_sha256=$ACTUAL_SHA" >> "$GITHUB_OUTPUT"
+          echo "manifest_sha256=$MANIFEST_SHA" >> "$GITHUB_OUTPUT"
+          echo "tarball_sha256=$ACTUAL_SHA"
+          echo "manifest_sha256=$MANIFEST_SHA"
+          MANIFEST_TAG=$(node -e 'const fs=require("fs"); const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); process.stdout.write(m.gitTag||"")' "$MANIFEST")
+          MANIFEST_COMMIT=$(node -e 'const fs=require("fs"); const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); process.stdout.write(m.gitCommit||"")' "$MANIFEST")
+          test "$MANIFEST_TAG" = "$TAG"
+          test "$MANIFEST_COMMIT" = "$EXPECTED_COMMIT"
+          tar -xOf "$TGZ_ABS" package/package.json | EXPECTED_VERSION="$EXPECTED_VERSION" node -e '
+            const fs = require("fs");
+            const p = JSON.parse(fs.readFileSync(0, "utf8"));
+            if (p.name !== "@arokodev/cli") process.exit(2);
+            if (p.version !== process.env.EXPECTED_VERSION) process.exit(3);
+            if (p.bin?.aroko !== "./dist/index.js") process.exit(4);
+            if (p.bin?.pairmesh !== "./dist/index.js") process.exit(5);
+            console.log("identity_ok", p.name, p.version);
+          '
+          SMOKE="$RUNNER_TEMP/aroko-diag-smoke"
+          mkdir -p "$SMOKE"
+          cd "$SMOKE"
+          npm init -y >/dev/null
+          npm install "$TGZ_ABS"
+          ./node_modules/.bin/aroko --help >/dev/null
+          ./node_modules/.bin/pairmesh --help >/dev/null
+          echo "smoke_ok=yes"
+
+      - name: Upload diagnostic artifact set
+        uses: actions/upload-artifact@v4
+        with:
+          name: aroko-pack-diagnostic-${{ github.run_id }}
+          path: dist-packages/releases/
+          if-no-files-found: error
+
+      - name: Confirm nonpublishing
+        run: |
+          echo "Diagnostic pack complete."
+          echo "node=${{ steps.tag.outputs.node }} npm=${{ steps.tag.outputs.npm }} pnpm=${{ steps.tag.outputs.pnpm }}"
+          echo "No npm publish/stage, no GitHub Release, no remote tag mutation."

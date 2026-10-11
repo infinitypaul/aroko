@@ -4,12 +4,9 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 import { createPairMeshA2AAgent } from "./index.js";
+import { allocateEphemeralPortPair } from "./test-ports.js";
 
 const fixtureWorkspace = join(process.cwd(), "fixtures", "payment-workspace");
-
-function pickPort(): number {
-  return 46_000 + Math.floor(Math.random() * 2_000);
-}
 
 async function waitUntilReachable(url: string, timeoutMs = 10_000): Promise<void> {
   const started = Date.now();
@@ -42,11 +39,9 @@ async function createPairedManagers(options?: {
   process.env.PAIRMESH_WORKSPACE = fixtureWorkspace;
   process.env.PAIRMESH_FAKE_AGENT_DELAY_MS = String(options?.kelvinDelayMs ?? 0);
 
-  let paulPort = pickPort();
-  let kelvinPort = pickPort();
-  while (kelvinPort === paulPort) {
-    kelvinPort = pickPort();
-  }
+  // Ephemeral OS ports — avoids collisions with parallel A2A/MCP suites that
+  // previously shared the random 46000–48000 band (CI EADDRINUSE on 47238).
+  const { a: paulPort, b: kelvinPort } = await allocateEphemeralPortPair();
 
   // Each agent binds the state file that is current when it is created, so the
   // joiner's agent must be created against the joiner's state.

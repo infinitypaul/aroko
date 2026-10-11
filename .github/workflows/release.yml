@@ -82,14 +82,16 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          # npm trusted publishing requires Node >= 22.14 and npm >= 11.5.1
+          # Pack uses Node 22 + npm ≥11.15 for toolchain parity with publish,
+          # but MUST NOT set registry-url here: that injects NPM_CONFIG_USERCONFIG
+          # + NODE_AUTH_TOKEN into the job and destabilized npm pack (S23-7U).
+          # Registry auth belongs only on the separately gated release-publish job.
           node-version: "22"
-          registry-url: "https://registry.npmjs.org"
 
-      - name: Require npm for staged trusted publishing
+      - name: Require npm toolchain (pack parity; no registry auth)
         run: |
           set -euo pipefail
-          # npm stage publish requires npm >= 11.15.0; OIDC trusted publishing requires >= 11.5.1
+          # Keep npm ≥11.15 so pack and later stage publish share the same major toolchain.
           npm install -g npm@^11.15.0
           NODE_V=$(node -v | sed 's/^v//')
           NPM_V=$(npm -v)
@@ -97,7 +99,7 @@ jobs:
           node -e '
             const [maj, min] = process.versions.node.split(".").map(Number);
             if (maj < 22 || (maj === 22 && min < 14)) {
-              console.error("FAIL: trusted publishing requires Node.js >= 22.14 (got " + process.versions.node + ")");
+              console.error("FAIL: release toolchain requires Node.js >= 22.14 (got " + process.versions.node + ")");
               process.exit(1);
             }
           '
@@ -106,10 +108,14 @@ jobs:
             const [maj, min] = v.split(".").map(Number);
             const ok = maj > 11 || (maj === 11 && min >= 15);
             if (!ok) {
-              console.error("FAIL: staged publishing requires npm >= 11.15.0 (got " + v + ")");
+              console.error("FAIL: release toolchain requires npm >= 11.15.0 (got " + v + ")");
               process.exit(1);
             }
           '
+          if [ -n "${NODE_AUTH_TOKEN:-}" ] || [ -n "${NPM_TOKEN:-}" ]; then
+            echo "FAIL: release-pack must not receive npm auth tokens"
+            exit 1
+          fi
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -133,10 +139,9 @@ jobs:
       - name: Package once (release mode)
         run: |
           set -euo pipefail
-          # CI-generated paths that must not fail release provenance dirty-tree checks:
-          # - actions/setup-node registry-url writes an untracked .npmrc
-          # - public export excludes docs/validation/**, but pnpm test (r5-7 evidence)
-          #   may recreate that tree as untracked output on the public projection
+          # Defense-in-depth cleanup for paths that must not fail dirty-tree checks:
+          # - accidental .npmrc (pack job no longer uses setup-node registry-url)
+          # - public export excludes docs/validation/**; pnpm test may recreate it
           rm -f .npmrc
           rm -rf docs/validation
           if [ -n "$(git status --porcelain)" ]; then
@@ -144,6 +149,7 @@ jobs:
             git status --porcelain
             exit 1
           fi
+          # Packaging sanitizes npm subprocess env (see scripts/release/npm-pack-env.mjs).
           pnpm run package:release
         env:
           AROKO_RELEASE_MODE: release

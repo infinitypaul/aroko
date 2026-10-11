@@ -5,13 +5,11 @@ import { tmpdir } from "node:os";
 import { LocalStateStore, SessionManager, formatAuditEventHuman } from "@pairmesh/client";
 import { describe, expect, it } from "vitest";
 import { createPairMeshA2AAgent } from "./index.js";
+import { allocateEphemeralPortPair } from "./test-ports.js";
 
 const fixtureWorkspace = join(process.cwd(), "fixtures", "payment-workspace");
 const QUESTION_CANARY = "PAIR_MESH_PRIVATE_QUESTION_DO_NOT_LOG";
 
-function pickPort(): number {
-  return 46_000 + Math.floor(Math.random() * 2_000);
-}
 
 async function waitUntilReachable(url: string, timeoutMs = 10_000): Promise<void> {
   const started = Date.now();
@@ -45,11 +43,7 @@ async function createPairedManagers(options?: {
   process.env.PAIRMESH_WORKSPACE = fixtureWorkspace;
   process.env.PAIRMESH_FAKE_AGENT_DELAY_MS = String(options?.kelvinDelayMs ?? 0);
 
-  let paulPort = pickPort();
-  let kelvinPort = pickPort();
-  while (kelvinPort === paulPort) {
-    kelvinPort = pickPort();
-  }
+  const { a: paulPort, b: kelvinPort } = await allocateEphemeralPortPair();
 
   const paulAgent = createPairMeshA2AAgent({
     name: "paul-agent",
