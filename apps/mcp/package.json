@@ -1,6 +1,6 @@
 {
   "name": "@pairmesh/mcp",
-  "version": "0.1.0-alpha.5",
+  "version": "0.1.0-alpha.6",
   "description": "Aroko MCP server",
   "type": "module",
   "engines": {

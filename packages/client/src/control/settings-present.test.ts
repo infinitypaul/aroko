@@ -15,7 +15,7 @@ import {
 } from "../../control-web/settings-present.js";
 
 const readyStatus = {
-  version: "0.1.0-alpha.5",
+  version: "0.1.0-alpha.6",
   buildId: "20260901T120000Z",
   buildTimestamp: "2026-09-01T12:00:00.000Z",
   projectId: "prj_demo",
@@ -75,7 +75,7 @@ describe("Stage 20 Prompt 6 — Settings presentation", () => {
   it("shows version/build and honest update placeholder", () => {
     const about = formatAboutVersion(readyStatus);
     expect(about.productName).toBe("Aroko");
-    expect(about.versionLine).toContain("0.1.0-alpha.5");
+    expect(about.versionLine).toContain("0.1.0-alpha.6");
     expect(about.buildLine).toContain("20260901T120000Z");
     expect(buildUpdatesSection(readyStatus).body).toMatch(/isn't available yet/i);
     expect(
