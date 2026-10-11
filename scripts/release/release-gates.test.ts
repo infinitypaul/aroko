@@ -117,6 +117,27 @@ describe("S23-7J release gates", () => {
     // Must not rely solely on short-name cat-file of describe output.
     expect(releaseWorkflow).not.toMatch(/OBJECT_TYPE=\$\(git cat-file -t "\$TAG"\)/);
   });
+  it("removes setup-node .npmrc before package:release and keeps dirty-tree fail-closed (S23-7S)", () => {
+    expect(releaseWorkflow).toContain("rm -f .npmrc");
+    expect(releaseWorkflow).toContain("working tree dirty before package:release");
+    // Cleanup must sit in the pack job package step, not disable provenance.
+    const packIdx = releaseWorkflow.indexOf("Package once (release mode)");
+    const publishIdx = releaseWorkflow.indexOf("release-publish:");
+    expect(packIdx).toBeGreaterThan(-1);
+    expect(publishIdx).toBeGreaterThan(packIdx);
+    const packBlock = releaseWorkflow.slice(packIdx, publishIdx);
+    expect(packBlock).toContain("rm -f .npmrc");
+    expect(packBlock).toContain("pnpm run package:release");
+    // Publish job must retain setup-node registry-url (OIDC/npmrc for stage path).
+    const publishBlock = releaseWorkflow.slice(publishIdx);
+    expect(publishBlock).toContain('registry-url: "https://registry.npmjs.org"');
+    // Must not strip .npmrc from the publish job before npm stage publish.
+    const stageIdx = publishBlock.indexOf("npm stage publish");
+    expect(stageIdx).toBeGreaterThan(-1);
+    const beforeStage = publishBlock.slice(0, stageIdx);
+    expect(beforeStage).not.toContain("rm -f .npmrc");
+  });
+
 });
 
 describe("S23-7J negative gate simulations", () => {
@@ -172,11 +193,11 @@ describe("S23-7J negative gate simulations", () => {
     repoId: "1413375921",
     packedCommit: "97fa9c3e60849487cf5964b157abfe9d6023311a",
     checkoutCommit: "97fa9c3e60849487cf5964b157abfe9d6023311a",
-    packedTag: "v0.1.0-alpha.2",
-    headTag: "v0.1.0-alpha.2",
+    packedTag: "v0.1.0-alpha.3",
+    headTag: "v0.1.0-alpha.3",
     packageName: "@arokodev/cli",
-    packageVersion: "0.1.0-alpha.2",
-    manifestTag: "v0.1.0-alpha.2",
+    packageVersion: "0.1.0-alpha.3",
+    manifestTag: "v0.1.0-alpha.3",
     manifestCommit: "97fa9c3e60849487cf5964b157abfe9d6023311a",
     expectedSha: "abc",
     actualSha: "abc",

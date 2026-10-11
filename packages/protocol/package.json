@@ -1,6 +1,6 @@
 {
   "name": "@pairmesh/protocol",
-  "version": "0.1.0-alpha.2",
+  "version": "0.1.0-alpha.3",
   "description": "Aroko protocol types and schemas (wire IDs remain pairmesh.* for compatibility)",
   "type": "module",
   "engines": {
