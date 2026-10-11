@@ -166,7 +166,7 @@ describe("update check", () => {
     expect(evaluateUpdateCheck({ installedVersion: "0.1.0-alpha.1", available }).status).toBe(
       "update-available"
     );
-    expect(evaluateUpdateCheck({ installedVersion: "0.1.0-alpha.3", available }).status).toBe(
+    expect(evaluateUpdateCheck({ installedVersion: "0.1.0-alpha.4", available }).status).toBe(
       "newer-than-channel"
     );
   });
