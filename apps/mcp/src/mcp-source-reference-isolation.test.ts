@@ -1,5 +1,6 @@
 import { createPairMeshA2AAgent } from "@pairmesh/coordination/a2a";
 import { LocalStateStore, SessionManager } from "@pairmesh/client";
+import { createServer } from "node:net";
 import { mkdtemp } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -7,8 +8,20 @@ import { describe, expect, it } from "vitest";
 
 const fixtureWorkspace = join(process.cwd(), "fixtures", "payment-workspace");
 
-function pickPort(): number {
-  return 47_000 + Math.floor(Math.random() * 2_000);
+async function allocateEphemeralPort(host = "127.0.0.1"): Promise<number> {
+  return await new Promise((resolve, reject) => {
+    const server = createServer();
+    server.once("error", reject);
+    server.listen(0, host, () => {
+      const address = server.address();
+      if (address === null || typeof address === "string") {
+        server.close(() => reject(new Error("failed to allocate ephemeral port")));
+        return;
+      }
+      const { port } = address;
+      server.close((error) => (error ? reject(error) : resolve(port)));
+    });
+  });
 }
 
 async function waitUntilReachable(url: string, timeoutMs = 10_000): Promise<void> {
@@ -55,19 +68,19 @@ describe("Stage 14 source-reference isolation (multi-peer)", () => {
     const paulAgent = createPairMeshA2AAgent({
       name: "paul-agent",
       host: "127.0.0.1",
-      port: pickPort()
+      port: await allocateEphemeralPort()
     });
     process.env.PAIRMESH_STATE_FILE = kelvinPath;
     const kelvinAgent = createPairMeshA2AAgent({
       name: "kelvin-agent",
       host: "127.0.0.1",
-      port: pickPort()
+      port: await allocateEphemeralPort()
     });
     process.env.PAIRMESH_STATE_FILE = sarahPath;
     const sarahAgent = createPairMeshA2AAgent({
       name: "sarah-agent",
       host: "127.0.0.1",
-      port: pickPort()
+      port: await allocateEphemeralPort()
     });
     process.env.PAIRMESH_STATE_FILE = creatorPath;
 

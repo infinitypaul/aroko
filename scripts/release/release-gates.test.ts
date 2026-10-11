@@ -134,6 +134,26 @@ describe("S23-7J release gates", () => {
     const beforeStage = publishBlock.slice(0, stageIdx);
     expect(beforeStage).not.toContain("rm -f .npmrc");
   });
+
+  it("keeps registry-url / auth off the nonpublishing release-pack job (S23-7U)", () => {
+    const packJobIdx = releaseWorkflow.indexOf("release-pack:");
+    const publishIdx = releaseWorkflow.indexOf("release-publish:");
+    expect(packJobIdx).toBeGreaterThan(-1);
+    expect(publishIdx).toBeGreaterThan(packJobIdx);
+    const packJob = releaseWorkflow.slice(packJobIdx, publishIdx);
+    // Pack must not inject setup-node registry auth into npm pack.
+    expect(packJob).not.toContain('registry-url: "https://registry.npmjs.org"');
+    expect(packJob).toContain("release-pack must not receive npm auth tokens");
+    // Publish retains registry-url for staged trusted publishing only.
+    const publishJob = releaseWorkflow.slice(publishIdx);
+    expect(publishJob).toContain('registry-url: "https://registry.npmjs.org"');
+    // Packaging script must sanitize npm subprocess env.
+    expect(packagePairmesh).toContain("buildPackagingNpmEnv");
+    expect(packagePairmesh).toContain("npm-pack-env.mjs");
+    // Workspace CLI pack with bundledDependencies is skipped (staging builds @arokodev/cli).
+    expect(packagePairmesh).toContain("@pairmesh/cli` is intentionally omitted");
+    expect(packagePairmesh).not.toContain('{ name: "@pairmesh/cli", dir: "apps/cli" }');
+  });
 });
 
 describe("S23-7J negative gate simulations", () => {

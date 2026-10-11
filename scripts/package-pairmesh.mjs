@@ -5,6 +5,7 @@ import { readFileSync, renameSync, rmSync, statSync } from "node:fs";
 import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildPackagingNpmEnv } from "./release/npm-pack-env.mjs";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const outputDir = join(repoRoot, "dist-packages");
@@ -18,16 +19,30 @@ export const PUBLIC_CLI_TARBALL_PREFIX = "aroko-cli";
 
 const PACKAGE_VERSION = readCliPackageVersion();
 
+/**
+ * Workspace packages packed as file: inputs for staging.
+ * `@pairmesh/cli` is intentionally omitted: the public artifact is produced from
+ * `aroko-cli-staging` as `@arokodev/cli`. Packing the workspace CLI (bundledDependencies)
+ * under CI setup-node auth/userconfig crashed npm 11 with "Exit handler never called!".
+ */
 const PACK_ORDER = [
   { name: "@pairmesh/protocol", dir: "packages/protocol" },
   { name: "@pairmesh/shared", dir: "packages/shared" },
   { name: "@pairmesh/permissions", dir: "packages/permissions" },
   { name: "@pairmesh/client", dir: "packages/client" },
   { name: "@pairmesh/coordination", dir: "apps/coordination" },
-  { name: "@pairmesh/mcp", dir: "apps/mcp" },
-  { name: "@pairmesh/cli", dir: "apps/cli" }
+  { name: "@pairmesh/mcp", dir: "apps/mcp" }
 ];
 
+/** @param {string} command @param {import("node:child_process").ExecSyncOptionsWithStringEncoding} [options] */
+function runNpm(command, options = {}) {
+  return execSync(command, {
+    encoding: "utf8",
+    stdio: "pipe",
+    ...options,
+    env: buildPackagingNpmEnv(options.env ?? process.env)
+  });
+}
 const BANNED_TARBALL_PATTERNS = [
   /^package\/\.pairmesh\//,
   /^package\/\.cursor\//,
@@ -87,9 +102,9 @@ async function packWorkspacePackages() {
     await writeFile(packageJsonPath, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
 
     try {
-      const output = execSync("npm pack --pack-destination ../../dist-packages/tarballs", {
-        cwd: absDir,
-        encoding: "utf8"
+      // Absolute destination avoids cwd-relative confusion across apps/* vs packages/*.
+      const output = runNpm(`npm pack --pack-destination ${JSON.stringify(tarballDir)}`, {
+        cwd: absDir
       }).trim();
       const tarballName = output.split("\n").pop()?.trim();
       if (!tarballName) {
@@ -143,7 +158,7 @@ async function createStagingInstall(packed) {
     "utf8"
   );
   await cp(join(repoRoot, "LICENSE"), join(stagingDir, "LICENSE"));
-  run(`npm install --omit=dev`, { cwd: stagingDir });
+  runNpm("npm install --omit=dev", { cwd: stagingDir, stdio: "inherit" });
 
   // Public/packaged package.json must not embed absolute local file: paths.
   const publishDependencies = Object.fromEntries(depNames.map((name) => [name, PACKAGE_VERSION]));
@@ -211,9 +226,8 @@ async function main() {
   await createStagingInstall(packed);
 
   console.log("Creating distributable tarball...");
-  const packOutput = execSync("npm pack --pack-destination ..", {
-    cwd: stagingDir,
-    encoding: "utf8"
+  const packOutput = runNpm(`npm pack --pack-destination ${JSON.stringify(outputDir)}`, {
+    cwd: stagingDir
   }).trim();
   const tarballName = packOutput.split("\n").pop()?.trim();
   if (!tarballName) {

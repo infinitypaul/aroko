@@ -4,12 +4,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createPairMeshA2AAgent } from "./index.js";
+import { allocateEphemeralPortPair } from "./test-ports.js";
 
 const fixtureWorkspace = join(process.cwd(), "fixtures", "payment-workspace");
 
-function pickPort(): number {
-  return 46_000 + Math.floor(Math.random() * 2_000);
-}
 
 async function waitUntilReachable(url: string, timeoutMs = 10_000): Promise<void> {
   const started = Date.now();
@@ -38,11 +36,7 @@ describe("Invite-time Stage 10 policies", () => {
     process.env.PAIRMESH_WORKSPACE = fixtureWorkspace;
     process.env.PAIRMESH_FAKE_AGENT_DELAY_MS = "0";
 
-    const paulPort = pickPort();
-    let kelvinPort = pickPort();
-    while (kelvinPort === paulPort) {
-      kelvinPort = pickPort();
-    }
+    const { a: paulPort, b: kelvinPort } = await allocateEphemeralPortPair();
 
     const paulAgent = createPairMeshA2AAgent({
       name: "paul-agent",
