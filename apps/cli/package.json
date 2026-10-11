@@ -1,7 +1,7 @@
 {
   "name": "@pairmesh/cli",
-  "version": "0.1.0-alpha.4",
-  "description": "Aroko CLI \u2014 connect AI coding agents for cross-repository pair programming",
+  "version": "0.1.0-alpha.5",
+  "description": "Aroko CLI — connect AI coding agents for cross-repository pair programming",
   "type": "module",
   "engines": {
     "node": ">=20.0.0"
