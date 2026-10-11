@@ -1,0 +1,196 @@
+# S23-7Y — One-time bootstrap: stage the pinned alpha.5 artifact via a stage-only
+# npm token. Does NOT approve, does NOT npm publish, does NOT create a GitHub Release.
+#
+# Activation requires:
+#   - workflow_dispatch with confirm_bootstrap=true
+#   - environment npm-first-publish-bootstrap
+#   - secret NPM_STAGE_ONLY_TOKEN (stage-only granular access token)
+#
+# Environment wait timers are NOT human approval. Maintainer must run
+# `npm stage approve <stage-id>` with interactive 2FA after a successful stage.
+#
+# Do not use this path once OIDC trusted publishing is configured on release.yml.
+name: npm-first-publish-bootstrap
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_bootstrap:
+        description: "Stage exact alpha.5 artifact 11698599720 (does NOT approve / publish / create GitHub Release)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: npm-first-publish-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  stage-verified-alpha5:
+    name: stage-verified-alpha5
+    if: ${{ inputs.confirm_bootstrap == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: npm-first-publish-bootstrap
+    # No id-token:write — this bootstrap uses a temporary stage-only token, not OIDC.
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Fail closed — repository pin
+        run: |
+          set -euo pipefail
+          if [ "${{ github.repository }}" != "infinitypaul/aroko" ]; then
+            echo "FAIL: bootstrap runs only on infinitypaul/aroko (got ${{ github.repository }})"
+            exit 1
+          fi
+          if [ "${{ github.repository_id }}" != "1413375921" ]; then
+            echo "FAIL: unexpected repository id ${{ github.repository_id }}"
+            exit 1
+          fi
+
+      - name: Setup Node (no registry auth injection)
+        uses: actions/setup-node@v4
+        with:
+          # No registry-url: avoid injecting NPM_CONFIG_USERCONFIG / NODE_AUTH_TOKEN
+          # into non-staging steps. Auth is applied only in the final stage step.
+          node-version: "22"
+
+      - name: Require npm stage toolchain
+        run: |
+          set -euo pipefail
+          npm install -g npm@^11.15.0
+          NODE_V=$(node -v | sed 's/^v//')
+          NPM_V=$(npm -v)
+          echo "node=$NODE_V npm=$NPM_V"
+          node -e '
+            const [maj, min] = process.versions.node.split(".").map(Number);
+            if (maj < 22 || (maj === 22 && min < 14)) {
+              console.error("FAIL: requires Node.js >= 22.14 (got " + process.versions.node + ")");
+              process.exit(1);
+            }
+          '
+          NPM_V="$NPM_V" node -e '
+            const v = process.env.NPM_V;
+            const [maj, min] = v.split(".").map(Number);
+            const ok = maj > 11 || (maj === 11 && min >= 15);
+            if (!ok) {
+              console.error("FAIL: requires npm >= 11.15.0 (got " + v + ")");
+              process.exit(1);
+            }
+          '
+          if [ -n "${NODE_AUTH_TOKEN:-}" ] || [ -n "${NPM_TOKEN:-}" ] || [ -n "${NPM_STAGE_ONLY_TOKEN:-}" ]; then
+            echo "FAIL: npm credentials must not be present before the final stage step"
+            exit 1
+          fi
+
+      - name: Download pinned artifact 11698599720
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # Hard-pinned — never accept an input artifact id.
+          ARTIFACT_ID=11698599720
+          OUT="$RUNNER_TEMP/bootstrap-out"
+          rm -rf "$OUT"
+          mkdir -p "$OUT"
+          gh api "repos/${{ github.repository }}/actions/artifacts/${ARTIFACT_ID}/zip" > "$RUNNER_TEMP/bootstrap-art.zip"
+          unzip -q "$RUNNER_TEMP/bootstrap-art.zip" -d "$OUT"
+          echo "BOOTSTRAP_OUT=$OUT" >> "$GITHUB_ENV"
+
+      - name: Verify identity + checksums (fail closed)
+        id: verify
+        run: |
+          set -euo pipefail
+          OUT="${BOOTSTRAP_OUT:?}"
+          # Exactly one tarball and one release-manifest.json in the artifact tree.
+          TGZ_COUNT=$(find "$OUT" -type f -name 'aroko-cli-0.1.0-alpha.5.tgz' | wc -l | tr -d ' ')
+          MANIFEST_COUNT=$(find "$OUT" -type f -name 'release-manifest.json' | wc -l | tr -d ' ')
+          OTHER_TGZ_COUNT=$(find "$OUT" -type f -name '*.tgz' ! -name 'aroko-cli-0.1.0-alpha.5.tgz' | wc -l | tr -d ' ')
+          if [ "$TGZ_COUNT" != "1" ]; then
+            echo "FAIL: expected exactly one aroko-cli-0.1.0-alpha.5.tgz (found $TGZ_COUNT)"
+            find "$OUT" -type f -name '*.tgz' -print || true
+            exit 1
+          fi
+          if [ "$MANIFEST_COUNT" != "1" ]; then
+            echo "FAIL: expected exactly one release-manifest.json (found $MANIFEST_COUNT)"
+            find "$OUT" -type f -name 'release-manifest.json' -print || true
+            exit 1
+          fi
+          if [ "$OTHER_TGZ_COUNT" != "0" ]; then
+            echo "FAIL: unexpected extra tarball(s) in artifact"
+            find "$OUT" -type f -name '*.tgz' -print
+            exit 1
+          fi
+
+          TGZ=$(find "$OUT" -type f -name 'aroko-cli-0.1.0-alpha.5.tgz')
+          MANIFEST=$(find "$OUT" -type f -name 'release-manifest.json')
+          EXPECTED_TGZ_SHA="a4b88378bcee7d37476d16e023b2b607446790b73112ed6b51ac74937cc67baf"
+          EXPECTED_MANIFEST_SHA="b1bc15f276d8786adc92dba38c9882552127d4d2550e805e050018f2a55588c0"
+          ACTUAL_TGZ_SHA=$(sha256sum "$TGZ" | awk '{print $1}')
+          ACTUAL_MANIFEST_SHA=$(sha256sum "$MANIFEST" | awk '{print $1}')
+          if [ "$ACTUAL_TGZ_SHA" != "$EXPECTED_TGZ_SHA" ]; then
+            echo "FAIL: tarball SHA256 mismatch"
+            echo "expected $EXPECTED_TGZ_SHA"
+            echo "actual   $ACTUAL_TGZ_SHA"
+            exit 1
+          fi
+          if [ "$ACTUAL_MANIFEST_SHA" != "$EXPECTED_MANIFEST_SHA" ]; then
+            echo "FAIL: manifest SHA256 mismatch"
+            echo "expected $EXPECTED_MANIFEST_SHA"
+            echo "actual   $ACTUAL_MANIFEST_SHA"
+            exit 1
+          fi
+
+          tar -xOf "$TGZ" package/package.json | node -e '
+            const p = JSON.parse(require("fs").readFileSync(0, "utf8"));
+            if (p.name !== "@arokodev/cli") process.exit(2);
+            if (p.version !== "0.1.0-alpha.5") process.exit(3);
+            if (p.bin?.aroko !== "./dist/index.js") process.exit(4);
+            if (p.bin?.pairmesh !== "./dist/index.js") process.exit(5);
+            console.log("identity_ok", p.name, p.version);
+          '
+          node -e '
+            const m = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+            if (m.gitTag !== "v0.1.0-alpha.5") process.exit(6);
+            if (m.gitCommit !== "113ee594a51638ca313503f7d2f07be18d10a960") process.exit(7);
+            if (!m.artifacts?.[0] || m.artifacts[0].sha256 !== process.argv[2]) process.exit(8);
+            if (m.artifacts[0].name !== "aroko-cli-0.1.0-alpha.5.tgz") process.exit(9);
+            console.log("manifest_ok", m.gitTag, m.gitCommit);
+          ' "$MANIFEST" "$EXPECTED_TGZ_SHA"
+
+          echo "tgz=$TGZ" >> "$GITHUB_OUTPUT"
+          echo "Verified pinned alpha.5 artifact; ready to stage (not approve)."
+
+      - name: Stage only (no approve, no npm publish, no GitHub Release)
+        env:
+          # Credential scoped to this step only.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_STAGE_ONLY_TOKEN }}
+          TGZ: ${{ steps.verify.outputs.tgz }}
+        run: |
+          set -euo pipefail
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "FAIL: secrets.NPM_STAGE_ONLY_TOKEN is not configured"
+            exit 1
+          fi
+          if [ -z "${TGZ:-}" ] || [ ! -f "$TGZ" ]; then
+            echo "FAIL: verified tarball path missing"
+            exit 1
+          fi
+          # Isolate auth to a temp userconfig for this step only; never echo the token.
+          STAGE_NPMRC="$RUNNER_TEMP/npm-stage-only.npmrc"
+          umask 077
+          printf '%s\n' \
+            "registry=https://registry.npmjs.org/" \
+            "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" \
+            > "$STAGE_NPMRC"
+          # Stage the exact verified tarball. Never rebuild. Never npm publish.
+          npm --userconfig "$STAGE_NPMRC" stage publish "$TGZ" --access public --tag alpha
+          rm -f "$STAGE_NPMRC"
+          echo "STAGED successfully."
+          echo "Maintainer must run: npm stage approve <stage-id> (interactive 2FA)."
+          echo "Environment wait timers are NOT human approval."
+          echo "Do not create a GitHub Release from this workflow."
