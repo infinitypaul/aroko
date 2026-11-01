@@ -34,7 +34,7 @@
     "@pairmesh/protocol": "workspace:*",
     "@pairmesh/shared": "workspace:*",
     "express": "^5.2.1",
-    "zod": "^4.4.3"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@types/express": "^5.0.6"

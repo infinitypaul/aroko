@@ -19,14 +19,14 @@
   },
   "dependencies": {
     "@a2a-js/sdk": "^1.0.1",
-    "@modelcontextprotocol/server": "^2.0.0",
+    "@modelcontextprotocol/server": "~2.3.1",
     "@noble/ciphers": "^2.0.0",
     "@noble/curves": "^2.0.0",
     "@noble/hashes": "^2.0.0",
     "@pairmesh/protocol": "workspace:*",
     "@pairmesh/shared": "workspace:*",
     "ws": "^8.18.0",
-    "zod": "^4.4.3"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@types/ws": "^8.5.13"
