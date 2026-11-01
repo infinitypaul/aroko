@@ -1,13 +1,13 @@
 {
   "schemaVersion": "1.0.0",
   "product": "Aroko",
-  "privateSourceCommit": "345c362e6111c68157e58f5536c0da3511fa4531",
-  "exportedAt": "2026-10-11T23:06:07+02:00",
+  "privateSourceCommit": "7a26ea520ff0740e919ccf457462bd957f2b23df",
+  "exportedAt": "2026-11-01T13:59:27+01:00",
   "exportToolVersion": "1.1.0",
   "publicBoundaryVersion": "s23-7k-v1",
   "includedPathPolicyHash": "ef98a42e0f4e234648b00bf8f4f7181bd79c8b03bf685be49d1bf6cf9220a30e",
-  "sanitizationRulesHash": "bf94e64e77395837bd1b0a6a6063cf303726204e0e982bdabb478a042b68dcaf",
-  "exportTreeHash": "909e3b299e0b2d8b2c57a47cefc5a306f289cb55196ef24e79c4ff46a2b6b3ad",
+  "sanitizationRulesHash": "6db79573c7bf07af41ef21af3563ca4908a62d02e677e1ac87c58d515248c56a",
+  "exportTreeHash": "223ffcead38cf40168d4b8b9bb942507b485fb33307943417855e43a3c11a590",
   "exportFileCount": 582,
   "sourceTreeClean": true,
   "overlays": [
