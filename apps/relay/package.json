@@ -1,6 +1,6 @@
 {
   "name": "@pairmesh/relay",
-  "version": "0.1.0-alpha.6",
+  "version": "0.1.0-alpha.7",
   "private": true,
   "description": "Self-hostable content-blind Aroko relay (Stage 13 Prompt 3 alpha)",
   "type": "module",

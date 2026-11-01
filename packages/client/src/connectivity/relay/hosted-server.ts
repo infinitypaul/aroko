@@ -553,7 +553,7 @@ export class HostedPairMeshRelay {
         JSON.stringify({
           status: "ok",
           role: "pairmesh-relay",
-          version: "0.1.0-alpha.6"
+          version: "0.1.0-alpha.7"
         })
       );
       return;
