@@ -49,6 +49,19 @@ function waitFor(predicate: () => boolean, timeoutMs = 15_000, intervalMs = 25):
   });
 }
 
+async function waitForAsync(
+  predicate: () => boolean | Promise<boolean>,
+  timeoutMs = 15_000,
+  intervalMs = 25
+): Promise<void> {
+  const started = Date.now();
+  for (;;) {
+    if (await predicate()) return;
+    if (Date.now() - started > timeoutMs) throw new Error("waitForAsync timeout");
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+}
+
 describe("presence reconciliation (Stage 18 Prompt 3)", () => {
   it("mints join presence distinct from connection id shape", () => {
     const id = mintJoinerRelayPresenceId();
@@ -104,7 +117,15 @@ describe("presence reconciliation (Stage 18 Prompt 3)", () => {
       routeBefore && "presenceGeneration" in routeBefore ? routeBefore.presenceGeneration : 1;
 
     joinerBridge.terminateActiveSocketForTest();
-    await waitFor(() => joinerBridge.getStatus().lifecycle === "ready", 30_000);
+    // Wait for ready *and* persisted generation bump — lifecycle can return before
+    // presenceGeneration is written (CI timing under Vitest 4 parallel load).
+    await waitForAsync(async () => {
+      if (joinerBridge.getStatus().lifecycle !== "ready") return false;
+      const route = await loadRelayRoute(joinerRoute);
+      const gen =
+        route && "presenceGeneration" in route ? route.presenceGeneration : undefined;
+      return typeof gen === "number" && gen > (genBefore ?? 0);
+    }, 30_000);
 
     const routeAfter = await loadRelayRoute(joinerRoute);
     const presenceAfter =

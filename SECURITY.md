@@ -6,13 +6,13 @@ for the public-alpha security boundary.
 
 ## Reporting a vulnerability
 
-**While this repository is private:** report security issues only through an
-already-established private channel with the repository owner. Do not file
-public issues that contain secrets, credentials, or private source.
+This product repository is **public**. Prefer **GitHub Private Vulnerability
+Reporting** on https://github.com/infinitypaul/aroko when that feature is
+enabled by the maintainer.
 
-**Once this repository is public:** use GitHub Private Vulnerability Reporting
-on this repository (operator must enable the feature). That channel is the
-intended public-alpha security reporting path.
+If Private Vulnerability Reporting is unavailable, contact the repository owner
+through an already-established private channel. Do **not** file public issues
+that contain secrets, credentials, or private source.
 
 No public security email address is published here. Do not invent one.
 
@@ -26,4 +26,5 @@ No public security email address is published here. Do not invent one.
 ## Out of scope for this file
 
 Operator configuration of GitHub Private Vulnerability Reporting, npm trusted
-publishing, and repository visibility are external to the product codebase.
+publishing, DNS/hosting for `aroko.dev`, and relay operations are external to
+the product codebase.
