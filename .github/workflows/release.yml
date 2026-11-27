@@ -85,7 +85,8 @@ jobs:
           # Pack uses Node 22 + npm ≥11.15 for toolchain parity with publish,
           # but MUST NOT set registry-url here: that injects NPM_CONFIG_USERCONFIG
           # + NODE_AUTH_TOKEN into the job and destabilized npm pack (S23-7U).
-          # Registry auth belongs only on the separately gated release-publish job.
+          # release-publish also omits registry-url so OIDC stage is not blocked by
+          # a setup-node placeholder token (S23-8G / S23-8H).
           node-version: "22"
 
       - name: Require npm toolchain (pack parity; no registry auth)
@@ -200,9 +201,11 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          # npm trusted publishing requires Node >= 22.14 and npm >= 11.5.1
+          # npm trusted publishing requires Node >= 22.14 and npm >= 11.5.1.
+          # Do NOT set registry-url: setup-node writes an auth .npmrc and injects a
+          # placeholder NODE_AUTH_TOKEN, which blocks OIDC (S23-8G run 45851055468).
+          # registry.npmjs.org is npm's default; OIDC uses id-token, not NODE_AUTH_TOKEN.
           node-version: "22"
-          registry-url: "https://registry.npmjs.org"
 
       - name: Require npm for staged trusted publishing
         run: |
@@ -228,6 +231,25 @@ jobs:
               process.exit(1);
             }
           '
+          # Fail closed if a real credential or leftover setup-node injection is present
+          # before artifact checks / stage. Do not unset here — reject the job instead.
+          if [ -n "${NODE_AUTH_TOKEN:-}" ] || [ -n "${NPM_TOKEN:-}" ]; then
+            echo "FAIL: release-publish must not receive npm auth tokens (OIDC only)"
+            exit 1
+          fi
+          if [ -n "${NPM_CONFIG_USERCONFIG:-}" ]; then
+            echo "FAIL: release-publish must not use setup-node auth userconfig (OIDC only)"
+            exit 1
+          fi
+          REGISTRY=$(npm config get registry)
+          echo "npm_registry=$REGISTRY"
+          case "$REGISTRY" in
+            https://registry.npmjs.org|https://registry.npmjs.org/) ;;
+            *)
+              echo "FAIL: unexpected npm registry for OIDC stage: $REGISTRY"
+              exit 1
+              ;;
+          esac
 
       - name: Verify @arokodev/cli artifact identity (fail closed)
         run: |

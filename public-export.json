@@ -1,14 +1,14 @@
 {
   "schemaVersion": "1.0.0",
   "product": "Aroko",
-  "privateSourceCommit": "7d6320ff1c4e00bcd181eee829b966ec3ad2ed8b",
-  "exportedAt": "2026-11-01T14:41:48+01:00",
+  "privateSourceCommit": "396982340b1c1483132831620bcb6f367ece5bd5",
+  "exportedAt": "2026-11-27T18:02:19+01:00",
   "exportToolVersion": "1.1.0",
   "publicBoundaryVersion": "s23-7k-v1",
   "includedPathPolicyHash": "ef98a42e0f4e234648b00bf8f4f7181bd79c8b03bf685be49d1bf6cf9220a30e",
-  "sanitizationRulesHash": "bec6b4e99eeeda3d07009d89933bfd827ebef48e2002af9a71bfa64a9058fe09",
-  "exportTreeHash": "2b543764960426bfcbae1e0de2014692910e43cc0ee3e5d744a77929560411f1",
-  "exportFileCount": 582,
+  "sanitizationRulesHash": "729b80ee89cba9b78986ba502f41977b940eb3704474ca2dc28ed364b4ff1c53",
+  "exportTreeHash": "ce9900893607549975b82a58399a5c5cd8bc348757da8c2ecb2d20a4eb575f6f",
+  "exportFileCount": 584,
   "sourceTreeClean": true,
   "overlays": [
     {
@@ -117,6 +117,6 @@
     }
   ],
   "stripSourceComments": true,
-  "strippedCommentFiles": 115,
+  "strippedCommentFiles": 116,
   "stripSourceCommentMode": "policy-sanitize"
 }
