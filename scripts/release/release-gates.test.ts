@@ -125,9 +125,11 @@ describe("S23-7J release gates", () => {
     const packBlock = releaseWorkflow.slice(packIdx, publishIdx);
     expect(packBlock).toContain("rm -f .npmrc");
     expect(packBlock).toContain("pnpm run package:release");
-    // Publish job must retain setup-node registry-url (OIDC/npmrc for stage path).
+    // Publish must NOT use setup-node registry-url: it injects NODE_AUTH_TOKEN and
+    // blocks OIDC trusted publishing (S23-8G / S23-8H).
     const publishBlock = releaseWorkflow.slice(publishIdx);
-    expect(publishBlock).toContain('registry-url: "https://registry.npmjs.org"');
+    expect(publishBlock).not.toMatch(/^\s*registry-url\s*:/m);
+    expect(publishBlock).toContain("id-token: write");
     // Must not strip .npmrc from the publish job before npm stage publish.
     const stageIdx = publishBlock.indexOf("npm stage publish");
     expect(stageIdx).toBeGreaterThan(-1);
@@ -135,18 +137,20 @@ describe("S23-7J release gates", () => {
     expect(beforeStage).not.toContain("rm -f .npmrc");
   });
 
-  it("keeps registry-url / auth off the nonpublishing release-pack job (S23-7U)", () => {
+  it("keeps registry-url / auth off pack and OIDC publish jobs (S23-7U / S23-8H)", () => {
     const packJobIdx = releaseWorkflow.indexOf("release-pack:");
     const publishIdx = releaseWorkflow.indexOf("release-publish:");
     expect(packJobIdx).toBeGreaterThan(-1);
     expect(publishIdx).toBeGreaterThan(packJobIdx);
     const packJob = releaseWorkflow.slice(packJobIdx, publishIdx);
     // Pack must not inject setup-node registry auth into npm pack.
-    expect(packJob).not.toContain('registry-url: "https://registry.npmjs.org"');
+    expect(packJob).not.toMatch(/^\s*registry-url\s*:/m);
     expect(packJob).toContain("release-pack must not receive npm auth tokens");
-    // Publish retains registry-url for staged trusted publishing only.
+    // Publish also omits registry-url so OIDC stage is not blocked by placeholder tokens.
     const publishJob = releaseWorkflow.slice(publishIdx);
-    expect(publishJob).toContain('registry-url: "https://registry.npmjs.org"');
+    expect(publishJob).not.toMatch(/^\s*registry-url\s*:/m);
+    expect(publishJob).toContain("long-lived npm token env must not be present for trusted publishing");
+    expect(publishJob).toContain("release-publish must not receive npm auth tokens (OIDC only)");
     // Packaging script must sanitize npm subprocess env.
     expect(packagePairmesh).toContain("buildPackagingNpmEnv");
     expect(packagePairmesh).toContain("npm-pack-env.mjs");
