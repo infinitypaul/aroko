@@ -41,7 +41,8 @@ contributors are documented there as well.
 2. One of you starts a collaboration and shares a single-use invite.
 3. The other joins with that invite.
 4. Requests (inspect, propose a change, …) need explicit permissions.
-5. Mutations require the receiver’s exact approval in the local Inbox.
+5. Mutations require the receiver’s exact approval in the local web Control
+   Center (`aroko open`) — Approve Once or Deny.
 
 ## Supported coding agents
 
@@ -63,9 +64,15 @@ See [Security](docs/concepts/security.md), the
 [public alpha security boundary](docs/security/public-alpha-security-boundary.md),
 and [SECURITY.md](SECURITY.md).
 
+## Website note
+
+Product docs live in this GitHub repository. The `aroko.dev` marketing hostname
+may be unavailable or show registrar parking until hosting is corrected; do not
+treat a parking page as product documentation.
+
 ## Documentation
 
-- [Getting started](docs/getting-started.md)
+- [Getting started](docs/getting-started.md) (quick start)
 - [Installation](docs/installation.md)
 - [Start a collaboration](docs/collaboration/start-a-collaboration.md)
 - [Join a collaboration](docs/collaboration/join-a-collaboration.md)
