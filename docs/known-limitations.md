@@ -21,7 +21,7 @@ Aroko is a **public alpha** (`npm install -g @arokodev/cli` → currently
 - Claude Code: collaboration via MCP; approvals stay in the local Control Center /
   Inbox (MCP cannot approve)
 - Gemini CLI: inspection; structured proposals not supported yet
-- ChatGPT Web / remote “Plane B” requester: deferred
+- ChatGPT Web remote requester: deferred
 
 ## Collaboration
 
